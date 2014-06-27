@@ -1,0 +1,352 @@
+#!/usr/bin/python3
+
+import sys
+import os
+import time
+import subprocess
+
+
+# CONSTANTS
+DIRECTORY = "Turnin"
+BLU = '\033[94m'
+GRN = '\033[92m'
+RED = '\033[91m'
+BLK = '\033[0m'
+MONTHS = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May',
+    'Jun', 'Jul', 'Aug',
+    'Sep', 'Oct', 'Nov', 'Dec']
+
+
+# SCORE PENALTIES
+NO_MAIN = 10
+NO_HEADER = 10
+NO_DESCRIPT = 5
+NO_COMMENTS = 10
+WRONG_FNAME = 5
+LATE_PER_DAY = 10
+HAS_ERROR = 30
+
+
+# Returns a standard 60-character divider to print out.
+def div():
+    return "------------------------------------------------------------"
+
+
+# Calls the clear screen command.
+def cls():
+    subprocess.call(["clear"])
+
+
+# Prints the list of issues with the program.
+def showIssues(issues):
+    print()
+    print(RED)
+    for i in range(len(issues)):
+        print("[" + str(i+1) + "] " + issues[i])
+    print(BLK, end="")
+
+
+# Adds up the total grade values using the subtractions and additions lists
+def computeGrade(subtractions, additions):
+    result = 100
+    for sub in subtractions:
+        result -= sub
+    for add in additions:
+        result += add
+    return max(0, result)
+    
+    
+# Executes the program and displays its ouput in Blue.
+def runProg(fPath):
+    print(div() + BLU)
+    #subprocess.call(["python3", fPath]) # run the python program
+    worked = True
+    try:
+        out = subprocess.check_output(["python3", fPath]) # run the python program
+        print(str(out).replace("\\n", "\n")[2:-1])
+    except:
+        worked = False
+    print(BLK + div())
+    return worked
+
+
+# Cats the file to display it on the screen.
+def catProg(fPath):
+    print(div())
+    subprocess.call(["cat", fPath]) # cat the file
+    print()
+    print(div())
+
+
+# Grades the student's submission by trying to match the file to their list
+# of files in their directory path. This part also recognizes late submissions
+# and incorrect file names.
+def doGrade(student, pyFile, theirFiles, path, dueMonth, dueDay):
+    cls()
+    print("STUDENT:", student)
+
+    # keep track of recommended grade and issues with the program
+    issues = []
+    comments = []
+    subtractions = []
+
+    # Try to find the correct file (even if it's mislabeled)
+    theirFilesLwr = list(map(str.lower, theirFiles))
+    trueFile = pyFile
+    exists = True
+    # if file is found, all good
+    if pyFile in theirFiles:
+        print("FILE:", pyFile)
+    # file lowercase (bad)
+    elif pyFile.lower() in theirFilesLwr:
+        trueFile = pyFile.lower()
+        print("FILE:", pyFile.lower(), RED + "(WRONG)" + BLK)
+        issues.append("Wrong File Name [" + trueFile + "]: -" + str(WRONG_FNAME))
+        comments.append("Wrong file name [-" + str(WRONG_FNAME) + "]")
+        subtractions.append(WRONG_FNAME)
+    # file missing extension (bad)
+    elif pyFile[:-3] in theirFiles:
+        trueFile = pyFile[:-3]
+        print("FILE:", pyFile[:-3], RED + "(WRONG)" + BLK)
+        issues.append("Wrong File Name [" + trueFile + "]: -" + str(WRONG_FNAME))
+        comments.append("Wrong file name [-" + str(WRONG_FNAME) + "]")
+        subtractions.append(WRONG_FNAME)
+    # file missing extension and lowercase (bad)
+    elif pyFile[:-3].lower() in theirFilesLwr:
+        trueFile = pyFile[:-3].lower()
+        print("FILE:", pyFile[:-3].lower(), RED + "(WRONG)" + BLK)
+        issues.append("Wrong File Name [" + trueFile + "]: -" + str(WRONG_FNAME))
+        comments.append("Wrong file name [-" + str(WRONG_FNAME) + "]")
+        subtractions.append(WRONG_FNAME)
+    # file not found at all, print an error and do a manual check
+    else:
+        print(RED + "File not found" + BLK + " for", student)
+        print("Here are all of their files:", theirFiles)
+        # ask grader if any of these should be tried... if not, its a 0
+        trueFile = input("Should I load any of these? > ")
+        if trueFile == "":
+            issues.append("No File: 0")
+            comments.append("No file.")
+            subtractions.append(100)
+            exists = False
+        else:
+            issues.append("Wrong File Name [" + trueFile + "]: -" + str(WRONG_FNAME))
+            comments.append("Wrong file name [-" + str(WRONG_FNAME) + "]")
+            subtractions.append(WRONG_FNAME)
+    
+    # if the file was in fact found, time it, run it, and cat it
+    if exists:
+        # figure out submission time
+        fPath = path + "/" + student + "/" + trueFile
+        mtime = os.path.getmtime(fPath)
+        timestamp = time.ctime(mtime)
+        timestamp = timestamp.split(' ')
+        month = MONTHS.index(timestamp[1]) + 1
+        day = int(timestamp[2])
+        if month > dueMonth or (month == dueMonth and day > dueDay):
+            approx = day - dueDay
+            if month > dueMonth:
+                approx += 30
+            penalty = approx * LATE_PER_DAY
+            subtractions.append(penalty)
+            if penalty > 100:
+                penalty = "0"
+            else:
+                penalty = "-" + str(penalty)
+            # day or days? it matters!
+            days = "days"
+            if approx == 1:
+                days = "day"
+            issues.append("Late: " + str(month) + "/" + str(day) +\
+                          " (due " + str(dueMonth) + "/" + str(dueDay) + ")" +\
+                          " [approx " + str(approx) + " "+days+" late]: " +\
+                          penalty)
+            comments.append(str(approx) + " "+days+" late [" + penalty + "].")
+
+        # TODO - plugin modules for specific grading here: run plugin check
+        # scripts for testing specific types of programs.
+
+        # run and cat the program
+        worked = runProg(fPath)
+        if not worked:
+            print(RED + "Program failed to run." + BLK)
+        input("Finished. Press ENTER to continue.")
+        cls()
+        catProg(fPath)
+
+        # read the file and check it for main(), header, and comments
+        f = open(fPath, "r")
+        hasMain = False
+        hasHeader = False
+        atHeader = True
+        hasDescription = False
+        hasComments = False
+        for line in f:
+            line = line.strip()
+            # check for main()
+            if not atHeader and not hasMain and "main" in line:
+                hasMain = True
+            # check for header
+            if atHeader:
+                if len(line) > 0 and line[0] != "#":
+                    atHeader = False
+                if len(line) > 0 and line[0] == "#":
+                    hasHeader = True
+            # check for comments
+            if not atHeader and "#" in line:
+                hasComments = True
+            # check for program description:
+            if atHeader and "description" in line.lower():
+                descIndx = line.lower().find("description")
+                rest = line[descIndx + 12:].strip()
+                if len(rest) > 12:
+                    hasDescription = True
+        f.close()
+
+        # go through each flag and take off points for it
+        if not worked:
+            issues.append("Program did not run: -" + str(HAS_ERROR))
+            comments.append("Program did not run [-" + str(HAS_ERROR) + "].")
+            subtractions.append(HAS_ERROR)
+        if not hasMain:
+            issues.append("Missing main(): -" + str(NO_MAIN))
+            comments.append("Missing main() [-" + str(NO_MAIN) + "].")
+            subtractions.append(NO_MAIN)
+        if not hasHeader:
+            issues.append("Missing header: -" + str(NO_HEADER))
+            comments.append("Missing header [-" + str(NO_HEADER) + "].")
+            subtractions.append(NO_HEADER)
+        if not hasComments:
+            issues.append("No comments: -" + str(NO_COMMENTS))
+            comments.append("No comments [-" + str(NO_COMMENTS) + "].")
+            subtractions.append(NO_COMMENTS)
+        if hasHeader and not hasDescription:
+            issues.append("Missing or incomplete description: -" + str(NO_DESCRIPT))
+            comments.append("Missing description [-" + str(NO_DESCRIPT) + "].")
+            subtractions.append(NO_DESCRIPT)
+
+    # Display all issues and the maximum recommended grade, and then let the
+    # grader remove issues, and add or subtract points manually, or override
+    # the grade as follows:
+    #   Let N be a number.
+    #       xN      removes issue N
+    #       -N      subtracts N points
+    #       +N      adds N points
+    #       N       overrides the grade to N points
+    #               (no input) keeps recommended grade
+    showIssues(issues)
+    recommended = computeGrade(subtractions, [])
+    print(GRN + "Max grade: " + str(recommended))
+    grade = input(BLU + "Grade:     " + BLK)
+    additions = []
+    while grade != "":
+        modifications = grade.split()
+        if(len(modifications) == 1 and modifications[0][0] != "+" \
+                                   and modifications[0][0] != "-" \
+                                   and modifications[0][0] != "x" \
+                                   and modifications[0].isdigit()):
+            recommended = int(modifications[0])
+            break
+        for mod in modifications:
+            if mod[0] == "x":
+                issueIndx = int(mod[1:]) - 1
+                issues.pop(issueIndx)
+                comments.pop(issueIndx)
+                subtractions.pop(issueIndx)
+            elif mod[0] == "+":
+                cVal = int(mod[1:])
+                additions.append(cVal)
+            elif mod[0] == "-":
+                cVal = int(mod[1:])
+                additions.append(-cVal)
+        showIssues(issues)
+        recommended = computeGrade(subtractions, additions)
+        print(GRN + "New grade: " + str(recommended))
+        grade = input(BLU + "Grade:     " + BLK)
+    grade = str(max(0, recommended))
+
+    # process standard comments, and get grader append any other notes
+    cmnts = ""
+    for c in comments:
+        cmnts += c + " "
+    cmnts += input(BLU + "Comments:  " + BLK)
+
+    # set up the user's grade and confirm (or redo) it if grader wants
+    usrGrade = []
+    usrGrade.append(student)
+    usrGrade.append(grade)
+    usrGrade.append(cmnts)
+    print(usrGrade)
+    ans = input("Done. Type 'r' to redo this grade, or 'q' to quit. ")
+    quit = False
+    if ans.lower() == "r":
+        doGrade(student, pyFile, theirFiles, path, dueMonth, dueDay)
+    elif ans.lower() == "q":
+        quit = True
+
+    # return the grade for file processing
+    print(div() + "\n" + div() + "\n" + div())
+    return usrGrade, quit
+
+
+# Go through each person's submission and grade it, then write the grades to
+# a file.
+def main(path, pyFile, dueMonth, dueDay, start):
+    # set up date, file path, and first person to start grading
+    dueMonth = int(dueMonth)
+    dueDay = int(dueDay)
+    fpath = path + "/" + DIRECTORY
+    first = True
+    go = True
+    if start != "":
+        go = False
+
+    # if the file is empty, we need to write the header
+    outFile = path + "/grades.csv"
+    if not os.path.isfile(outFile) or os.stat(outFile).st_size == 0:
+        fH = open(outFile, "w")
+        fH.write("\"Last Name\",\"First Name\",\"" +\
+            path + "\",\"Feedback to User\"\n")
+        fH.close()
+
+    # get a sorted list of students and iterate through them
+    students = os.listdir(fpath)
+    students.sort()
+    for student in students:
+        # skip students that are before the starting point
+        if not go:
+            if student.startswith(start):
+                go = True
+            else:
+                continue
+        # get the student's submissions and grade the file
+        files = os.listdir(fpath + "/" + student)
+        usrGrade, quit = doGrade(student, pyFile, files, fpath, dueMonth, dueDay)
+
+        # write the data to the output file
+        studentNames = usrGrade[0].split(",")
+        if len(studentNames) == 2:
+            lastName, firstName = usrGrade[0].split(",")
+        else:
+            lastName = firstName = usrGrade[0]
+        fH = open(outFile, "a")
+        fH.write("\"" + lastName + "\",\"" + firstName + "\",\"" + usrGrade[1]\
+            + "\",\"" + usrGrade[2].replace("\"", "\"\"") + "\"\n")
+        #fH.write(usrGrade[0].ljust(25))
+        #fH.write(usrGrade[1].ljust(4))
+        #fH.write(usrGrade[2] + "\n")
+        fH.close()
+        if quit:
+            break
+
+
+# Check parameters and call main().
+if __name__ == '__main__':
+    start = ""
+    if len(sys.argv) == 6:
+        start = sys.argv[5]
+    if len(sys.argv) < 5:
+        print("USAGE: ./grader [dir] [.py file] [due month] [due day] <start>")
+    else:
+        main(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], start)
