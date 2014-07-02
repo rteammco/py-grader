@@ -57,25 +57,25 @@ def computeGrade(subtractions, additions):
     
     
 # Executes the program and displays its ouput in Blue.
-def runProg(fPath):
+def runProg(fPath, inputs = []):
     print(div() + BLU)
-    #subprocess.call(["python3", fPath]) # run the python program
     worked = True
+    out = ""
     try:
+        # open the subprocess and send any/all input to it
         proc = subprocess.Popen(["python3", fPath], \
                                 stdin=subprocess.PIPE, \
                                 stdout=subprocess.PIPE)
-#        out = subprocess.check_output(["python3", fPath], stdin=subprocess.PIPE) # run the python program
-        send = "x"
-        proc.stdin.write(bytes(send + "\n", "ascii"))
+        for send in inputs:
+            proc.stdin.write(bytes(send + "\n", "ascii"))
         proc.stdin.flush()
-        out = str(proc.stdout.read())
-        # proc.close() ?
-        print(str(out).replace("\\n", "\n")[2:-1])
+        out = str(proc.stdout.read()).replace("\\n", "\n")[2:-1]
+        print(out)
+        proc.terminate()
     except:
         worked = False
     print(BLK + div())
-    return worked
+    return worked, out
 
 
 # Cats the file to display it on the screen.
@@ -89,7 +89,7 @@ def catProg(fPath):
 # Grades the student's submission by trying to match the file to their list
 # of files in their directory path. This part also recognizes late submissions
 # and incorrect file names.
-def doGrade(student, pyFile, theirFiles, path, dueMonth, dueDay):
+def doGrade(student, pyFile, theirFiles, path, dueMonth, dueDay, inputs, outputs):
     cls()
     print("STUDENT:", student)
 
@@ -178,6 +178,8 @@ def doGrade(student, pyFile, theirFiles, path, dueMonth, dueDay):
         # scripts for testing specific types of programs.
 
         # run and cat the program
+        #for run in range(runs):
+        #   worked, out = runProg(fPath, inputs[run])
         worked = runProg(fPath)
         if not worked:
             print(RED + "Program failed to run." + BLK)
@@ -302,7 +304,7 @@ def doGrade(student, pyFile, theirFiles, path, dueMonth, dueDay):
 
 # Go through each person's submission and grade it, then write the grades to
 # a file.
-def main(assignment, pyFile, dueMonth, dueDay, start):
+def main(assignment, pyFile, dueMonth, dueDay, module, start):
     # set up date, file path, and first person to start grading
     dueMonth = int(dueMonth)
     dueDay = int(dueDay)
@@ -311,6 +313,28 @@ def main(assignment, pyFile, dueMonth, dueDay, start):
     go = True
     if start != "":
         go = False
+
+    # if a grading module was provided, set it up here:
+    inputs = []
+    outputs = []
+    test_runs = 0
+    if module != "":
+        mod_fH = open(module, "r")
+        lines = mod_fH.readlines()
+        mod_fH.close()
+        test_runs = int(lines[0][4:])
+        i = 2
+        for run in range(test_runs):
+            inputs.append([])
+            outputs.append([])
+            while i < len(lines) and not lines[i].startswith("OUTPUT"):
+                inputs[run].append(lines[i].strip()[4:])
+                i += 1
+            i += 1
+            while i < len(lines) and not lines[i].startswith("INPUT"):
+                outputs[run].append(lines[i].strip()[4:])
+                i += 1
+            i += 1
 
     # if the file is empty, we need to write the header
     outFile = assignment + "_grades.csv"
@@ -332,7 +356,8 @@ def main(assignment, pyFile, dueMonth, dueDay, start):
                 continue
         # get the student's submissions and grade the file
         files = os.listdir(fpath + "/" + student)
-        usrGrade, quit = doGrade(student, pyFile, files, fpath, dueMonth, dueDay)
+        usrGrade, quit = doGrade(student, pyFile, files, fpath, \
+                                 dueMonth, dueDay, inputs, outputs)
 
         # write the data to the output file
         studentNames = usrGrade[0].split(",")
@@ -351,12 +376,21 @@ def main(assignment, pyFile, dueMonth, dueDay, start):
             break
 
 
-# Check parameters and call main().
+# Check parameters and call main() with the appropriate values.
 if __name__ == '__main__':
-    start = ""
-    if len(sys.argv) == 6:
-        start = sys.argv[5]
     if len(sys.argv) < 5:
-        print("USAGE: ./grader [assignment] [.py file] [due month] [due day] <start>")
+        print("USAGE: ./grader <assignment> <.py file> <due month> <due day> [--options--]")
+        print("Options:")
+        print("  -m module  provide a grading module for input/output option checking")
+        print("  -s start   provide the first few letters of a last name to start at")
     else:
-        main(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], start)
+        # check for options
+        module = ""
+        start = ""
+        remaining_args = sys.argv[5:]
+        for i in range(len(remaining_args)):
+            if remaining_args[i] == "-m" and len(remaining_args) > i+1:
+                module = remaining_args[i+1]
+            elif remaining_args[i] == "-s" and len(remaining_args) > i+1:
+                start = remaining_args[i+1]
+        main(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], module, start)
