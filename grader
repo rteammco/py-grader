@@ -7,7 +7,6 @@ import subprocess
 
 
 # CONSTANTS
-DIRECTORY = "Turnin"
 BLU = '\033[94m'
 GRN = '\033[92m'
 RED = '\033[91m'
@@ -63,7 +62,15 @@ def runProg(fPath):
     #subprocess.call(["python3", fPath]) # run the python program
     worked = True
     try:
-        out = subprocess.check_output(["python3", fPath]) # run the python program
+        proc = subprocess.Popen(["python3", fPath], \
+                                stdin=subprocess.PIPE, \
+                                stdout=subprocess.PIPE)
+#        out = subprocess.check_output(["python3", fPath], stdin=subprocess.PIPE) # run the python program
+        send = "x"
+        proc.stdin.write(bytes(send + "\n", "ascii"))
+        proc.stdin.flush()
+        out = str(proc.stdout.read())
+        # proc.close() ?
         print(str(out).replace("\\n", "\n")[2:-1])
     except:
         worked = False
@@ -143,7 +150,10 @@ def doGrade(student, pyFile, theirFiles, path, dueMonth, dueDay):
         timestamp = time.ctime(mtime)
         timestamp = timestamp.split(' ')
         month = MONTHS.index(timestamp[1]) + 1
-        day = int(timestamp[2])
+        if timestamp[2] != '':
+            day = int(timestamp[2])
+        else:
+            day = int(timestamp[3])
         if month > dueMonth or (month == dueMonth and day > dueDay):
             approx = day - dueDay
             if month > dueMonth:
@@ -292,22 +302,22 @@ def doGrade(student, pyFile, theirFiles, path, dueMonth, dueDay):
 
 # Go through each person's submission and grade it, then write the grades to
 # a file.
-def main(path, pyFile, dueMonth, dueDay, start):
+def main(assignment, pyFile, dueMonth, dueDay, start):
     # set up date, file path, and first person to start grading
     dueMonth = int(dueMonth)
     dueDay = int(dueDay)
-    fpath = path + "/" + DIRECTORY
+    fpath = assignment
     first = True
     go = True
     if start != "":
         go = False
 
     # if the file is empty, we need to write the header
-    outFile = path + "/grades.csv"
+    outFile = assignment + "_grades.csv"
     if not os.path.isfile(outFile) or os.stat(outFile).st_size == 0:
         fH = open(outFile, "w")
         fH.write("\"Last Name\",\"First Name\",\"" +\
-            path + "\",\"Feedback to User\"\n")
+            assignment + "\",\"Feedback to User\"\n")
         fH.close()
 
     # get a sorted list of students and iterate through them
@@ -347,6 +357,6 @@ if __name__ == '__main__':
     if len(sys.argv) == 6:
         start = sys.argv[5]
     if len(sys.argv) < 5:
-        print("USAGE: ./grader [dir] [.py file] [due month] [due day] <start>")
+        print("USAGE: ./grader [assignment] [.py file] [due month] [due day] <start>")
     else:
         main(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], start)
