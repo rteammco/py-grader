@@ -25,6 +25,7 @@ NO_HEADER = 10
 NO_DESCRIPT = 5
 NO_COMMENTS = 10
 WRONG_FNAME = 5
+BAD_OUTPUT = 10
 LATE_PER_DAY = 10
 HAS_ERROR = 30
 
@@ -214,7 +215,7 @@ def doGrade(student, pyFile, theirFiles, path, dueMonth, dueDay, inputs, outputs
                 print(GRN + "Output matched (correct)!" + BLK)
             output_grade += matches / max_matches
         output_grade /= len(inputs)
-        output_grade = math.floor(output_grade*10) / 10
+        output_grade = math.floor(output_grade*10) / 10 # round down
         print(div())
         print()
         print("Output grade:", output_grade)
@@ -268,7 +269,7 @@ def doGrade(student, pyFile, theirFiles, path, dueMonth, dueDay, inputs, outputs
             comments.append("Program did not run [-" + str(HAS_ERROR) + "].")
             subtractions.append(HAS_ERROR)
         if output_grade < 1:
-            output_sub = round(10 * (1 - output_grade))
+            output_sub = round(BAD_OUTPUT * (1 - output_grade))
             issues.append("Mismatched output: -" + str(output_sub))
             comments.append("Mismatched output [-" + str(output_sub) + "]")
             subtractions.append(output_sub)
