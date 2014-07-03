@@ -4,6 +4,8 @@ import sys
 import os
 import time
 import subprocess
+import difflib
+import math
 
 
 # CONSTANTS
@@ -35,6 +37,11 @@ def div():
 # Calls the clear screen command.
 def cls():
     subprocess.call(["clear"])
+
+
+# Returns the similarity ratio between two strings.
+def strSimilarity(one, two):
+     return difflib.SequenceMatcher(None, one, two).ratio()
 
 
 # Prints the list of issues with the program.
@@ -194,20 +201,24 @@ def doGrade(student, pyFile, theirFiles, path, dueMonth, dueDay, inputs, outputs
             # if it ran successfully, compare output with expected output(s)
             out = out.split("\n")[:-1]
             for j in range(min(len(outputs[i]), len(out))):
+                ratio = strSimilarity(outputs[i][j], out[j])
                 if out[j] != outputs[i][j]:
-                    print(RED + "Mismatched line in output:" + BLK)
+                    print(RED + "Mismatched line in output: " + BLK \
+                              + str(round(ratio*100, 2)) + "% match")
                     print("Expected: '" + outputs[i][j] + "'")
                     print("     Got: '" + out[j] + "'")
-                else:
-                    matches += 1
+                matches += ratio
             if len(out) != len(outputs[i]):
                 print(RED + "Too many lines in output!" + BLK)
             elif matches == max_matches:
                 print(GRN + "Output matched (correct)!" + BLK)
             output_grade += matches / max_matches
         output_grade /= len(inputs)
+        output_grade = math.floor(output_grade*10) / 10
         print(div())
+        print()
         print("Output grade:", output_grade)
+        print()
         
         # if no module provided, just run the program normally once
         if len(inputs) == 0:
@@ -256,6 +267,11 @@ def doGrade(student, pyFile, theirFiles, path, dueMonth, dueDay, inputs, outputs
             issues.append("Program did not run: -" + str(HAS_ERROR))
             comments.append("Program did not run [-" + str(HAS_ERROR) + "].")
             subtractions.append(HAS_ERROR)
+        if output_grade < 1:
+            output_sub = round(10 * (1 - output_grade))
+            issues.append("Mismatched output: -" + str(output_sub))
+            comments.append("Mismatched output [-" + str(output_sub) + "]")
+            subtractions.append(output_sub)
         if not hasMain:
             issues.append("Missing main(): -" + str(NO_MAIN))
             comments.append("Missing main() [-" + str(NO_MAIN) + "].")
