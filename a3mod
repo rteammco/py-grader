@@ -1,0 +1,16 @@
+RUN 3
+INPUT
+>>> x
+OUTPUT
+>>> Hello, world!
+>>> Enter a value: Your value x3 was: xxx
+INPUT
+>>> a
+OUTPUT
+>>> Hello, world!
+>>> Enter a value: Your value x3 was: aaa
+INPUT
+>>> omg
+OUTPUT
+>>> Hello, world!
+>>> Enter a value: Your value x3 was: omgomgomg
