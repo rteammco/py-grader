@@ -69,21 +69,25 @@ def runProg(fPath, inputs = []):
     print(BLU)
     worked = True
     out = ""
+    err = ""
     try:
         # open the subprocess and send any/all input to it
         proc = subprocess.Popen(["python3", fPath], \
                                 stdin=subprocess.PIPE, \
-                                stdout=subprocess.PIPE)
+                                stdout=subprocess.PIPE, \
+                                stderr=subprocess.PIPE)
         for send in inputs:
             proc.stdin.write(bytes(send + "\n", "ascii"))
         proc.stdin.flush()
         out = str(proc.stdout.read()).replace("\\n", "\n")[2:-1]
+        err = str(proc.stderr.read()).replace("\\n", "\n")[2:-1]
         print(out)
+        print(RED + err)
         proc.terminate()
     except:
         worked = False
     print(BLK, end="")
-    return worked, out
+    return worked, out, err
 
 
 # Cats the file to display it on the screen.
@@ -194,9 +198,13 @@ def doGrade(student, pyFile, theirFiles, path, dueMonth, dueDay, inputs, outputs
             matches = 0
             max_matches = len(outputs[i])
             # try to run the program
-            worked, out = runProg(fPath, inputs[i])
+            worked, out, err = runProg(fPath, inputs[i])
             if not worked:
                 print(RED + "Program failed to run." + BLK)
+                has_error = True
+                continue
+            if "error" in err.lower():
+                print(RED + "Program may have failed to run." + BLK)
                 has_error = True
                 continue
             # if it ran successfully, compare output with expected output(s)
