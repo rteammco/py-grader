@@ -51,7 +51,7 @@ def showIssues(issues):
     print(RED)
     for i in range(len(issues)):
         print("[" + str(i+1) + "] " + issues[i])
-    print(BLK, end="")
+    print(BLK + "To remove an issue, type x# where # is the issue number.")
 
 
 # Adds up the total grade values using the subtractions and additions lists
@@ -209,19 +209,35 @@ def doGrade(student, pyFile, theirFiles, path, dueMonth, dueDay, inputs, outputs
                 continue
             # if it ran successfully, compare output with expected output(s)
             out = out.split("\n")[:-1]
-            for j in range(min(len(outputs[i]), len(out))):
-                ratio = strSimilarity(outputs[i][j], out[j])
-                if out[j] != outputs[i][j]:
-                    print(RED + "Mismatched line in output: " + BLK \
-                              + str(round(ratio*100, 2)) + "% match")
-                    print("Expected: '" + outputs[i][j] + "'")
-                    print("     Got: '" + out[j] + "'")
-                matches += ratio
-            if len(out) != len(outputs[i]):
-                print(RED + "Too many lines in output!" + BLK)
-            elif matches == max_matches:
+            # remove empty lines from the output (we will ignore those)
+            out = list(filter(("").__ne__, out))
+            # stick expected outputs and actual outputs on one line and compare
+            out = ''.join(out)
+            expected = ''.join(outputs[i])
+            ratio = strSimilarity(out, expected)
+            if out != expected:
+                print(RED + "Mismatched line in output: " + BLK \
+                          + str(round(ratio*100, 2)) + "% match")
+                print("Expected: '" + outputs[i][j] + "'")
+                print("     Got: '" + out[j] + "'")
+            else:
                 print(GRN + "Output matched (correct)!" + BLK)
-            output_grade += matches / max_matches
+            output_grade += ratio
+            # go line by line and check the matching outputs
+            #for j in range(min(len(outputs[i]), len(out))):
+            #    ratio = strSimilarity(outputs[i][j], out[j])
+            #    if out[j] != outputs[i][j]:
+            #        print(RED + "Mismatched line in output: " + BLK \
+            #                  + str(round(ratio*100, 2)) + "% match")
+            #        print("Expected: '" + outputs[i][j] + "'")
+            #        print("     Got: '" + out[j] + "'")
+            #    matches += ratio
+            #if len(out) != len(outputs[i]):
+            #    print(RED + "Too many lines in output!" + BLK)
+            #elif matches == max_matches:
+            #    print(GRN + "Output matched (correct)!" + BLK)
+            #output_grade += matches / max_matches
+        # compute average grade of output using the sum of all comparisons
         output_grade /= len(inputs)
         output_grade = math.floor(output_grade*10) / 10 # round down
         print(div())
@@ -308,6 +324,7 @@ def doGrade(student, pyFile, theirFiles, path, dueMonth, dueDay, inputs, outputs
     #       N       overrides the grade to N points
     #               (no input) keeps recommended grade
     showIssues(issues)
+    print("Add or subtract points using +N or -N (N is the number of points).")
     recommended = computeGrade(subtractions, [])
     print(GRN + "Max grade: " + str(recommended))
     grade = input(BLU + "Grade:     " + BLK)
