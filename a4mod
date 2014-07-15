@@ -1,0 +1,26 @@
+RUN 5
+INPUT
+>>> 1
+>>> 5
+OUTPUT 3 7
+>>> Enter starting number of the range: Enter ending number of the range: The number 3 has the longest cycle length of 7.
+INPUT
+>>> 50
+>>> 60
+OUTPUT 55 112
+>>> Enter starting number of the range: Enter ending number of the range: The number 55 has the longest cycle length of 112.
+INPUT
+>>> 100
+>>> 200
+OUTPUT 171 124
+>>> Enter starting number of the range: Enter ending number of the range: The number 171 has the longest cycle length of 124.
+INPUT
+>>> 1
+>>> 10
+OUTPUT 9 19
+>>> Enter starting number of the range: Enter ending number of the range: The number 9 has the longest cycle length of 19.
+INPUT
+>>> 2
+>>> 3
+OUTPUT 3 7
+>>> Enter starting number of the range: Enter ending number of the range: The number 3 has the longest cycle length of 7.

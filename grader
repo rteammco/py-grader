@@ -26,6 +26,7 @@ NO_DESCRIPT = 5
 NO_COMMENTS = 10
 WRONG_FNAME = 5
 BAD_OUTPUT = 10
+WRONG_ANSWER = 20
 LATE_PER_DAY = 10
 HAS_ERROR = 30
 
@@ -101,7 +102,7 @@ def catProg(fPath):
 # Grades the student's submission by trying to match the file to their list
 # of files in their directory path. This part also recognizes late submissions
 # and incorrect file names.
-def doGrade(student, pyFile, theirFiles, path, dueMonth, dueDay, inputs, outputs):
+def doGrade(student, pyFile, theirFiles, path, dueMonth, dueDay, inputs, outputs, answers):
     cls()
     print("STUDENT:", student)
 
@@ -189,6 +190,7 @@ def doGrade(student, pyFile, theirFiles, path, dueMonth, dueDay, inputs, outputs
         # grade flags for trying to run the program
         has_error = False
         output_grade = 0
+        answer_grade = 0
         # if there is a module, run the program with the desired input/output values
         for i in range(len(inputs)):
             print(div())
@@ -207,42 +209,64 @@ def doGrade(student, pyFile, theirFiles, path, dueMonth, dueDay, inputs, outputs
                 print(RED + "Program may have failed to run." + BLK)
                 has_error = True
                 continue
-            # if it ran successfully, compare output with expected output(s)
-            out = out.split("\n")[:-1]
+
             # remove empty lines from the output (we will ignore those)
+            out = out.split("\n")[:-1]
+            real_out = '\n'.join(out)
             out = list(filter(("").__ne__, out))
             # stick expected outputs and actual outputs on one line and compare
             out = ''.join(out)
             expected = ''.join(outputs[i])
+            real_expected = '\n'.join(outputs[i])
             ratio = strSimilarity(out, expected)
+
+            # if there is a big difference in output length, take off more
+            big_diff = False
+            if abs(len(out) - len(expected)) >= len(expected) / 2:
+                big_diff = True
+
+            # now also check answers and make sure that (if any) answers are correct
+            num_correct = 0
+            for ans in answers[i]:
+                if ans in out:
+                    num_correct += 1
+            #if len(answers[i]) > 0:
+            #    answer_grade += num_correct / len(answers[i])
+            #else:
+            #    answer_grade += 1
+            if len(answers[i]) == num_correct:
+                answer_grade += 1
+
+            # if outputs didn't match, tell the grader about it
             if out != expected:
                 print(RED + "Mismatched line in output: " + BLK \
                           + str(round(ratio*100, 2)) + "% match")
-                print("Expected: '" + outputs[i][j] + "'")
-                print("     Got: '" + out[j] + "'")
+                print("Expected: '" + real_expected + "'")
+                print("     Got: '" + real_out + "'")
+                if big_diff:
+                    print(RED + "Big output difference detected: " + BLK \
+                              + "(-5% more)")
+                if num_correct < len(answers[i]):
+                    print(RED + "Wrong answer detected: " + BLK + "(" \
+                              + ', '.join(answers[i]) + " expected).")
             else:
                 print(GRN + "Output matched (correct)!" + BLK)
-            output_grade += ratio
-            # go line by line and check the matching outputs
-            #for j in range(min(len(outputs[i]), len(out))):
-            #    ratio = strSimilarity(outputs[i][j], out[j])
-            #    if out[j] != outputs[i][j]:
-            #        print(RED + "Mismatched line in output: " + BLK \
-            #                  + str(round(ratio*100, 2)) + "% match")
-            #        print("Expected: '" + outputs[i][j] + "'")
-            #        print("     Got: '" + out[j] + "'")
-            #    matches += ratio
-            #if len(out) != len(outputs[i]):
-            #    print(RED + "Too many lines in output!" + BLK)
-            #elif matches == max_matches:
-            #    print(GRN + "Output matched (correct)!" + BLK)
-            #output_grade += matches / max_matches
+            # if mismatch is really extreme, take off another 5 points
+            if big_diff:
+                ratio -= 0.5
+            output_grade += max(0, ratio)
         # compute average grade of output using the sum of all comparisons
-        output_grade /= len(inputs)
-        output_grade = math.floor(output_grade*10) / 10 # round down
+        if(len(inputs) > 0):
+            output_grade /= len(inputs)
+            output_grade = math.floor(output_grade*10) / 10 # round down
+            answer_grade /= len(inputs)
+        else:
+            output_grade = 1
+            answer_grade = 1
         print(div())
         print()
         print("Output grade:", output_grade)
+        print("Answer grade:", answer_grade)
         print()
         
         # if no module provided, just run the program normally once
@@ -292,6 +316,11 @@ def doGrade(student, pyFile, theirFiles, path, dueMonth, dueDay, inputs, outputs
             issues.append("Program did not run: -" + str(HAS_ERROR))
             comments.append("Program did not run [-" + str(HAS_ERROR) + "].")
             subtractions.append(HAS_ERROR)
+        if answer_grade < 1:
+            answer_sub = round(WRONG_ANSWER * (1 - answer_grade))
+            issues.append("Wrong answer(s): -" + str(answer_sub))
+            comments.append("Wrong answer(s) [-" + str(answer_sub) + "]")
+            subtractions.append(answer_sub)
         if output_grade < 1:
             output_sub = round(BAD_OUTPUT * (1 - output_grade))
             issues.append("Mismatched output: -" + str(output_sub))
@@ -394,6 +423,7 @@ def main(assignment, pyFile, dueMonth, dueDay, module, start):
     # if a grading module was provided, set it up here:
     inputs = []
     outputs = []
+    answers = []
     test_runs = 0
     if module != "":
         mod_fH = open(module, "r")
@@ -407,6 +437,12 @@ def main(assignment, pyFile, dueMonth, dueDay, module, start):
             while i < len(lines) and not lines[i].startswith("OUTPUT"):
                 inputs[run].append(lines[i].strip()[4:])
                 i += 1
+            if i < len(lines):
+                ans = lines[i].split(' ')
+                answerset = []
+                for j in range(1, len(ans)):
+                    answerset.append(ans[j].strip())
+                answers.append(answerset)
             i += 1
             while i < len(lines) and not lines[i].startswith("INPUT"):
                 outputs[run].append(lines[i].strip()[4:])
@@ -434,7 +470,7 @@ def main(assignment, pyFile, dueMonth, dueDay, module, start):
         # get the student's submissions and grade the file
         files = os.listdir(fpath + "/" + student)
         usrGrade, quit = doGrade(student, pyFile, files, fpath, \
-                                 dueMonth, dueDay, inputs, outputs)
+                                 dueMonth, dueDay, inputs, outputs, answers)
 
         # write the data to the output file
         studentNames = usrGrade[0].split(",")
