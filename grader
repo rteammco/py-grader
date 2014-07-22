@@ -8,6 +8,7 @@ import difflib
 import math
 
 
+
 # PROGRAM CONSTANTS
 BLU = '\033[94m'
 GRN = '\033[92m'
@@ -33,9 +34,11 @@ LATE_PER_DAY = 10
 HAS_ERROR = 30
 
 
+
 # Returns a standard 60-character divider to print out.
 def div():
     return "------------------------------------------------------------"
+
 
 
 # Calls the clear screen command.
@@ -43,9 +46,11 @@ def cls():
     subprocess.call(["clear"])
 
 
+
 # Returns the similarity ratio between two strings.
 def strSimilarity(one, two):
      return difflib.SequenceMatcher(None, one, two).ratio()
+
 
 
 # Prints the list of issues with the program.
@@ -57,6 +62,7 @@ def showIssues(issues):
     print(BLK + "To remove an issue, type x# where # is the issue number.")
 
 
+
 # Adds up the total grade values using the subtractions and additions lists
 def computeGrade(subtractions, additions):
     result = 100
@@ -65,8 +71,9 @@ def computeGrade(subtractions, additions):
     for add in additions:
         result += add
     return max(0, result)
-    
-    
+
+
+
 # Executes the program and displays its ouput in Blue.
 # Inputs is an optional list of input messages to send through the shell into
 # the running program (given by fPath).
@@ -95,6 +102,7 @@ def runProg(fPath, inputs = []):
     return worked, out, err
 
 
+
 # Looks through the given list of files to find the best match to "pyFile".
 # Returns:
 #   The actual file name, or None if the file doesn't exist.
@@ -118,6 +126,7 @@ def findUploadedFile(pyFile, theirFiles):
         return None, False
 
 
+
 # Computes how many days late this file was submitted and returns the
 # approximate number of days estimate. Returns 0 if this file was submitted
 # on time.
@@ -137,6 +146,7 @@ def getDaysLate(fPath, dueDay, dueMonth):
         return approx
     else:
         return 0
+
 
 
 # Grades the student's submission by trying to match the file to their list
@@ -471,7 +481,8 @@ def doGrade(student, pyFile, theirFiles, path, dueMonth, dueDay, \
     return usrGrade, quit
 
 
-# Go through each person's submission and grade it, then write the grades to
+
+# Go through each student's submission and grade it, then write the grades to
 # a file.
 def main(assignment, pyFile, dueMonth, dueDay, module, start):
     # set up date, file path, and first person to start grading
@@ -565,6 +576,7 @@ def main(assignment, pyFile, dueMonth, dueDay, module, start):
     print("Session stats:")
     print("   Number of students graded:", numGraded)
     print("   Average grade:", round(totalGrade/numGraded, 2))
+
 
 
 # Check parameters and call main() with the appropriate values.
