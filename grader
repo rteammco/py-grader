@@ -489,6 +489,7 @@ def main(assignment, pyFile, dueMonth, dueDay, module, start):
     answers = []
     test_runs = 0
     if module != "":
+        # read file and determine number of I/O test runs
         mod_fH = open(module, "r")
         lines = mod_fH.readlines()
         mod_fH.close()
@@ -497,9 +498,11 @@ def main(assignment, pyFile, dueMonth, dueDay, module, start):
         for run in range(test_runs):
             inputs.append([])
             outputs.append([])
+            # append each input to the inputs list for this run
             while i < len(lines) and not lines[i].startswith("OUTPUT"):
                 inputs[run].append(lines[i].strip()[4:])
                 i += 1
+            # get the expected answers for this run
             if i < len(lines):
                 ans = lines[i].split(' ')
                 answerset = []
@@ -507,17 +510,24 @@ def main(assignment, pyFile, dueMonth, dueDay, module, start):
                     answerset.append(ans[j].strip())
                 answers.append(answerset)
             i += 1
+            # get the list of full desired outputs for this run
             while i < len(lines) and not lines[i].startswith("INPUT"):
                 outputs[run].append(lines[i].strip()[4:])
                 i += 1
             i += 1
 
-    # if the file is empty, we need to write the header
+    # if the file is non-existent/empty or if user wants to start fresh,
+    # we need to write the header of the CSV file again
     outFile = assignment.strip("/") + "_grades.csv"
-    if not os.path.isfile(outFile) or os.stat(outFile).st_size == 0:
+    ans = "y"
+    if os.path.isfile(outFile) and os.stat(outFile).st_size > 0:
+        ans = "n"
+        ans = input("Grade output file \"" + outFile + \
+                    "\" already exists. Overwrite? [Y/n] ")
+    if ans.lower() == "y":
         fH = open(outFile, "w")
-        fH.write("\"Last Name\",\"First Name\",\"" +\
-            assignment + "\",\"Feedback to User\"\n")
+        fH.write("\"Last Name\",\"First Name\",\"" + assignment + \
+                 "\",\"Feedback to User\"\n")
         fH.close()
 
     # get a sorted list of students and iterate through them
@@ -549,9 +559,6 @@ def main(assignment, pyFile, dueMonth, dueDay, module, start):
         fH = open(outFile, "a")
         fH.write("\"" + lastName + "\",\"" + firstName + "\",\"" + usrGrade[1]\
             + "\",\"" + usrGrade[2].replace("\"", "\"\"") + "\"\n")
-        #fH.write(usrGrade[0].ljust(25))
-        #fH.write(usrGrade[1].ljust(4))
-        #fH.write(usrGrade[2] + "\n")
         fH.close()
         if quit:
             break
