@@ -8,7 +8,7 @@ import difflib
 import math
 
 
-# CONSTANTS
+# PROGRAM CONSTANTS
 BLU = '\033[94m'
 GRN = '\033[92m'
 RED = '\033[91m'
@@ -18,8 +18,10 @@ MONTHS = [
     'Jun', 'Jul', 'Aug',
     'Sep', 'Oct', 'Nov', 'Dec']
 
+# OPTIONAL CONSTANTS
+COMMENT_FREQUENCY_THRESH = 3
 
-# SCORE PENALTIES
+# SCORE PENALTY CONSTANTS
 NO_MAIN = 10
 NO_HEADER = 10
 NO_DESCRIPT = 5
@@ -66,6 +68,8 @@ def computeGrade(subtractions, additions):
     
     
 # Executes the program and displays its ouput in Blue.
+# Inputs is an optional list of input messages to send through the shell into
+# the running program (given by fPath).
 def runProg(fPath, inputs = []):
     print(BLU)
     worked = True
@@ -91,18 +95,55 @@ def runProg(fPath, inputs = []):
     return worked, out, err
 
 
-# Cats the file to display it on the screen.
-def catProg(fPath):
-    print(div())
-    subprocess.call(["cat", fPath]) # cat the file
-    print()
-    print(div())
+# Looks through the given list of files to find the best match to "pyFile".
+# Returns:
+#   The actual file name, or None if the file doesn't exist.
+#   True if the file name was correct, False otherwise.
+def findUploadedFile(pyFile, theirFiles):
+    theirFilesLwr = list(map(str.lower, theirFiles))
+    # if file is named correctly and exists, all is good
+    if pyFile in theirFiles:
+        return pyFile, True
+    # file lowercase (bad)
+    if pyFile.lower() in theirFilesLwr:
+        return pyFile.lower(), False
+    # file missing extension (bad)
+    elif pyFile[:-3] in theirFiles:
+        return pyFile[:-3], False
+    # file missing extension and lowercase (bad)
+    elif pyFile[:-3].lower() in theirFilesLwr:
+        return pyFile[:-3].lower(), False
+    # file not found at all, print an error and do a manual check
+    else:
+        return None, False
+
+
+# Computes how many days late this file was submitted and returns the
+# approximate number of days estimate. Returns 0 if this file was submitted
+# on time.
+def getDaysLate(fPath, dueDay, dueMonth):
+    mtime = os.path.getmtime(fPath)
+    timestamp = time.ctime(mtime)
+    timestamp = timestamp.split(' ')
+    month = MONTHS.index(timestamp[1]) + 1
+    if timestamp[2] != '':
+        day = int(timestamp[2])
+    else:
+        day = int(timestamp[3])
+    if month > dueMonth or (month == dueMonth and day > dueDay):
+        approx = day - dueDay
+        if month > dueMonth:
+            approx += 30
+        return approx
+    else:
+        return 0
 
 
 # Grades the student's submission by trying to match the file to their list
 # of files in their directory path. This part also recognizes late submissions
 # and incorrect file names.
-def doGrade(student, pyFile, theirFiles, path, dueMonth, dueDay, inputs, outputs, answers):
+def doGrade(student, pyFile, theirFiles, path, dueMonth, dueDay, \
+            inputs, outputs, answers, frequentComments):
     cls()
     print("STUDENT:", student)
 
@@ -112,66 +153,36 @@ def doGrade(student, pyFile, theirFiles, path, dueMonth, dueDay, inputs, outputs
     subtractions = []
 
     # Try to find the correct file (even if it's mislabeled)
-    theirFilesLwr = list(map(str.lower, theirFiles))
-    trueFile = pyFile
-    exists = True
-    # if file is found, all good
-    if pyFile in theirFiles:
-        print("FILE:", pyFile)
-    # file lowercase (bad)
-    elif pyFile.lower() in theirFilesLwr:
-        trueFile = pyFile.lower()
-        print("FILE:", pyFile.lower(), RED + "(WRONG)" + BLK)
-        issues.append("Wrong File Name [" + trueFile + "]: -" + str(WRONG_FNAME))
-        comments.append("Wrong file name [-" + str(WRONG_FNAME) + "]")
-        subtractions.append(WRONG_FNAME)
-    # file missing extension (bad)
-    elif pyFile[:-3] in theirFiles:
-        trueFile = pyFile[:-3]
-        print("FILE:", pyFile[:-3], RED + "(WRONG)" + BLK)
-        issues.append("Wrong File Name [" + trueFile + "]: -" + str(WRONG_FNAME))
-        comments.append("Wrong file name [-" + str(WRONG_FNAME) + "]")
-        subtractions.append(WRONG_FNAME)
-    # file missing extension and lowercase (bad)
-    elif pyFile[:-3].lower() in theirFilesLwr:
-        trueFile = pyFile[:-3].lower()
-        print("FILE:", pyFile[:-3].lower(), RED + "(WRONG)" + BLK)
-        issues.append("Wrong File Name [" + trueFile + "]: -" + str(WRONG_FNAME))
-        comments.append("Wrong file name [-" + str(WRONG_FNAME) + "]")
-        subtractions.append(WRONG_FNAME)
-    # file not found at all, print an error and do a manual check
-    else:
+    trueFile, correctName = findUploadedFile(pyFile, theirFiles)
+    
+    # if file was not found, print error and prompt for the file name manually
+    if not trueFile:
         print(RED + "File not found" + BLK + " for", student)
         print("Here are all of their files:", theirFiles)
         # ask grader if any of these should be tried... if not, its a 0
         trueFile = input("Should I load any of these? > ")
-        if trueFile == "":
+        if not trueFile:
             issues.append("No File: 0")
             comments.append("No file.")
             subtractions.append(100)
-            exists = False
-        else:
-            issues.append("Wrong File Name [" + trueFile + "]: -" + str(WRONG_FNAME))
-            comments.append("Wrong file name [-" + str(WRONG_FNAME) + "]")
-            subtractions.append(WRONG_FNAME)
+    # if file was not named correctly, take off points for that
+    elif not correctName:
+        print("FILE:", trueFile, RED + "(WRONG)" + BLK)
+        issues.append("Wrong File Name [" + trueFile + "]: -" + str(WRONG_FNAME))
+        comments.append("Wrong file name [-" + str(WRONG_FNAME) + "]")
+        subtractions.append(WRONG_FNAME)
+    # otherwise, everything is fine
+    else:
+        print("FILE:", pyFile)
     
     # if the file was in fact found, time it, run it, and cat it
-    if exists:
-        # figure out submission time
+    if trueFile:
         fPath = path + "/" + student + "/" + trueFile
-        mtime = os.path.getmtime(fPath)
-        timestamp = time.ctime(mtime)
-        timestamp = timestamp.split(' ')
-        month = MONTHS.index(timestamp[1]) + 1
-        if timestamp[2] != '':
-            day = int(timestamp[2])
-        else:
-            day = int(timestamp[3])
-        if month > dueMonth or (month == dueMonth and day > dueDay):
-            approx = day - dueDay
-            if month > dueMonth:
-                approx += 30
-            penalty = approx * LATE_PER_DAY
+        
+        # figure out submission time and deduct points if late
+        daysLate = getDaysLate(fPath, dueDay, dueMonth)
+        if daysLate > 0:
+            penalty = daysLate * LATE_PER_DAY
             subtractions.append(penalty)
             if penalty > 100:
                 penalty = "0"
@@ -191,7 +202,7 @@ def doGrade(student, pyFile, theirFiles, path, dueMonth, dueDay, inputs, outputs
         has_error = False
         output_grade = 0
         answer_grade = 0
-        # if there is a module, run the program with the desired input/output values
+        # if there is a module, run program with the desired input/output values
         for i in range(len(inputs)):
             print(div())
             print("Testing with input value(s):")
@@ -225,15 +236,13 @@ def doGrade(student, pyFile, theirFiles, path, dueMonth, dueDay, inputs, outputs
             if abs(len(out) - len(expected)) >= len(expected) / 2:
                 big_diff = True
 
-            # now also check answers and make sure that (if any) answers are correct
+            # now also check answers and make sure that (if any) answers are
+            # correct - answers are "keywords" in the output that indicate
+            # the correct result
             num_correct = 0
             for ans in answers[i]:
                 if ans in out:
                     num_correct += 1
-            #if len(answers[i]) > 0:
-            #    answer_grade += num_correct / len(answers[i])
-            #else:
-            #    answer_grade += 1
             if len(answers[i]) == num_correct:
                 answer_grade += 1
 
@@ -241,8 +250,8 @@ def doGrade(student, pyFile, theirFiles, path, dueMonth, dueDay, inputs, outputs
             if out != expected:
                 print(RED + "Mismatched line in output: " + BLK \
                           + str(round(ratio*100, 2)) + "% match")
-                print("Expected: '" + real_expected + "'")
-                print("     Got: '" + real_out + "'")
+                print("Expected: '" + expected + "'")
+                print("     Got: '" + out + "'")
                 if big_diff:
                     print(RED + "Big output difference detected: " + BLK \
                               + "(-5% more)")
@@ -255,6 +264,7 @@ def doGrade(student, pyFile, theirFiles, path, dueMonth, dueDay, inputs, outputs
             if big_diff:
                 ratio -= 0.5
             output_grade += max(0, ratio)
+            
         # compute average grade of output using the sum of all comparisons
         if(len(inputs) > 0):
             output_grade /= len(inputs)
@@ -279,18 +289,19 @@ def doGrade(student, pyFile, theirFiles, path, dueMonth, dueDay, inputs, outputs
         # report stats, halt, and then proceed to cat the program
         # TODO - report grade stats
         input("Finished. Press ENTER to continue.")
-        cls()
-        catProg(fPath)
 
-        # read the file and check it for main(), header, and comments
+        # read and print the file, and check it for main(), header, and comments
         f = open(fPath, "r")
         hasMain = False
         hasHeader = False
         atHeader = True
         hasDescription = False
         hasComments = False
+        cls()
+        print(div())
         for line in f:
             line = line.strip()
+            print(line)
             # check for main()
             if not atHeader and not hasMain and "main" in line:
                 hasMain = True
@@ -310,6 +321,8 @@ def doGrade(student, pyFile, theirFiles, path, dueMonth, dueDay, inputs, outputs
                 if len(rest) > 12:
                     hasDescription = True
         f.close()
+        print()
+        print(div())
 
         # go through each flag and take off points for it
         if has_error:
@@ -367,16 +380,19 @@ def doGrade(student, pyFile, theirFiles, path, dueMonth, dueDay, inputs, outputs
             recommended = int(modifications[0])
             break
         for mod in modifications:
+            modVal = mod[1:]
+            if not modVal.isdigit():
+                continue
             if mod[0] == "x":
-                issueIndx = int(mod[1:]) - 1
+                issueIndx = int(modVal) - 1
                 issues.pop(issueIndx)
                 comments.pop(issueIndx)
                 subtractions.pop(issueIndx)
             elif mod[0] == "+":
-                cVal = int(mod[1:])
+                cVal = int(modVal)
                 additions.append(cVal)
             elif mod[0] == "-":
-                cVal = int(mod[1:])
+                cVal = int(modVal)
                 additions.append(-cVal)
         showIssues(issues)
         recommended = computeGrade(subtractions, additions)
@@ -388,8 +404,55 @@ def doGrade(student, pyFile, theirFiles, path, dueMonth, dueDay, inputs, outputs
     cmnts = ""
     for c in comments:
         cmnts += c + " "
-    cmnts += input(BLU + "Comments:  " + BLK)
+    
+    # make suggestions on frequently used comments
+    suggestions = []
+    for i in range(0, len(frequentComments), 2):
+        freqC = frequentComments[i]
+        freqV = frequentComments[i+1]
+        if freqV >= COMMENT_FREQUENCY_THRESH:
+            suggestions += [freqC]
+    if len(suggestions) > 0:
+        print()
+        print("Frequent comments: use '@#' to enter them " + \
+              "(# is the comment number).")
+        for i in range(len(suggestions)):
+            print("[" + str(i+1) + "] " + "'" + suggestions[i] + "'")
+    # get grader to enter his/her own custom comments (optional)
+    grader_comment = input(BLU + "Comments:  " + BLK)
+    
+    # if grader used the '@' to indicate frequent comments, insert them in
+    parts = grader_comment.split()
+    modifiedComment = False
+    for part in parts:
+        if len(part) > 0 and part[0] == "@":
+            indx = part[1:]
+            if not indx.isdigit():
+                continue
+            indx = int(indx) - 1
+            if indx < len(suggestions):
+                grader_comment = grader_comment.replace(part, suggestions[indx])
+                modifiedComment = True
+            else:
+                grader_comment = grader_comment.replace(part, "")
+    
+    # add the grader's comments to the string
+    cmnts += grader_comment
+    
+    # if user entered a comment, add it to frequent comments, or increase
+    # its frequency if it already exists for future reference
+    if grader_comment and not modifiedComment:
+        foundMatch = False
+        for i in range(0, len(frequentComments), 2):
+            if strSimilarity(grader_comment, frequentComments[i]) >= 0.8 \
+               and "@" not in grader_comment:
+                frequentComments[i+1] += 1
+                foundMatch = True
+                break
+        if not foundMatch and "@" not in grader_comment:
+            frequentComments += [grader_comment, 1]
 
+    print(frequentComments)
     # set up the user's grade and confirm (or redo) it if grader wants
     usrGrade = []
     usrGrade.append(student)
@@ -450,7 +513,7 @@ def main(assignment, pyFile, dueMonth, dueDay, module, start):
             i += 1
 
     # if the file is empty, we need to write the header
-    outFile = assignment + "_grades.csv"
+    outFile = assignment.strip("/") + "_grades.csv"
     if not os.path.isfile(outFile) or os.stat(outFile).st_size == 0:
         fH = open(outFile, "w")
         fH.write("\"Last Name\",\"First Name\",\"" +\
@@ -460,6 +523,7 @@ def main(assignment, pyFile, dueMonth, dueDay, module, start):
     # get a sorted list of students and iterate through them
     students = os.listdir(fpath)
     students.sort()
+    freqComments = []
     for student in students:
         # skip students that are before the starting point
         if not go:
@@ -469,8 +533,8 @@ def main(assignment, pyFile, dueMonth, dueDay, module, start):
                 continue
         # get the student's submissions and grade the file
         files = os.listdir(fpath + "/" + student)
-        usrGrade, quit = doGrade(student, pyFile, files, fpath, \
-                                 dueMonth, dueDay, inputs, outputs, answers)
+        usrGrade, quit = doGrade(student, pyFile, files, fpath, dueMonth, \
+                                 dueDay, inputs, outputs, answers, freqComments)
 
         # write the data to the output file
         studentNames = usrGrade[0].split(",")
