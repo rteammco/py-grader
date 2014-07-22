@@ -524,6 +524,8 @@ def main(assignment, pyFile, dueMonth, dueDay, module, start):
     students = os.listdir(fpath)
     students.sort()
     freqComments = []
+    numGraded = 0
+    totalGrade = 0
     for student in students:
         # skip students that are before the starting point
         if not go:
@@ -535,7 +537,9 @@ def main(assignment, pyFile, dueMonth, dueDay, module, start):
         files = os.listdir(fpath + "/" + student)
         usrGrade, quit = doGrade(student, pyFile, files, fpath, dueMonth, \
                                  dueDay, inputs, outputs, answers, freqComments)
-
+        numGraded += 1
+        totalGrade += int(usrGrade[1])
+        
         # write the data to the output file
         studentNames = usrGrade[0].split(",")
         if len(studentNames) == 2:
@@ -551,6 +555,9 @@ def main(assignment, pyFile, dueMonth, dueDay, module, start):
         fH.close()
         if quit:
             break
+    print("Session stats:")
+    print("   Number of students graded:", numGraded)
+    print("   Average grade:", round(totalGrade/numGraded, 2))
 
 
 # Check parameters and call main() with the appropriate values.
