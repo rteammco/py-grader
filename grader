@@ -522,13 +522,18 @@ def read_module(module):
         lines = mod_file.readlines()
         mod_file.close()
         test_runs = int(lines[0][4:])
-        i = 2
+        i = 0
         for run in range(test_runs):
             inputs.append([])
             infiles.append([])
             outputs.append([])
             outfiles.append([])
             answers.append([])
+            # ignore any whitespace or invalid/comment lines
+            while i < len(lines) and not lines[i].startswith("INPUT"):
+                i += 1
+            i += 1
+            print(lines[i])
             # append each INPUT to the inputs list for this run
             while i < len(lines) and lines[i].startswith(">>>") :
                 inputs[run].append(lines[i].strip()[4:])
@@ -569,7 +574,6 @@ def read_module(module):
                     outfile.write(fline + "\n")
                     i += 1
                 outfile.close()
-            i += 1
     return inputs, infiles, outputs, outfiles, answers
 
 
