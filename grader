@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 
-import sys
-import os
-import time
-import subprocess
 import difflib
 import math
+import os
+import signal
+import subprocess
+import sys
+import time
 
 
 
@@ -641,8 +642,19 @@ def main(assignment, pyfile, due_month, due_day, module, start):
 
 
 
+# interrupt signal function gracefully handles interrupting and exitting
+def exit_nicely(signal, frame):
+    print("\n")
+    print("Quitting! Current student grade has not been saved.\n")
+    exit(0)
+
+
+
 # Check parameters and call main() with the appropriate values.
 if __name__ == '__main__':
+    # set up graceful exit if ctrl-c is pressed
+    signal.signal(signal.SIGINT, exit_nicely)
+    # process arguments
     if len(sys.argv) < 5:
         print("USAGE: ./grader <assignment> <.py file> <due month> <due day> [--options--]")
         print("Options:")
