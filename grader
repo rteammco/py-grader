@@ -79,22 +79,30 @@ def compute_grade(subtractions, additions):
 
 
 
+# calls the OS command to copy the given file into the given directory.
+def copy_file(src, dest):
+    cmd = "cp " + src + " " + dest
+    os.system(cmd)
+
+
+
 # Executes the program and displays its ouput in Blue.
 # Inputs is an optional list of input messages to send through the shell into
 # the running program (given by fPath).
-def run_prog(fdir, fname, inputs = [], infiles = [], outfiles = []):
+def run_prog(fdir, fname, inputs = [], infiles = []):
     print(BLU)
     worked = True
     out = ""
     err = ""
-    # copy I/O files (if any) to the current student directory
+    cur_dir = os.path.dirname(os.path.abspath(__file__))
+    # copy input files (if any) to the current grading directory
     for infname in infiles:
         real_name = '_'.join(infname.split('_')[3:])
-        #copy_file(infname, fpath + real_name)
-        print(fdir, infname, real_name)
+        copy_file(FILES_DIR + "/" + infname, fdir + "/" + real_name)
     try:
         # open the subprocess and send any/all input to it
-        proc = subprocess.Popen(["python3", fdir + "/" + fname], \
+        os.chdir(fdir)
+        proc = subprocess.Popen(["python3", fname], \
                                 stdin=subprocess.PIPE, \
                                 stdout=subprocess.PIPE, \
                                 stderr=subprocess.PIPE)
@@ -108,8 +116,28 @@ def run_prog(fdir, fname, inputs = [], infiles = [], outfiles = []):
         proc.terminate()
     except:
         worked = False
+    # change back to base directory and return results
+    os.chdir(cur_dir)
     print(BLK, end="")
     return worked, out, err
+
+
+
+# Does a comparison check to see if the files outputted by the program are
+# correct.
+def check_output_files(fdir, outfiles):
+    for outfname in outfiles:
+        real_name = '_'.join(outfname.split('_')[3:])
+        # open and check
+    # TODO - implement
+
+
+
+# Clean up all of the input and output files placed in the grading directory
+# while testing the program.
+def clean_io_files(fdir, infiles, outfiles):
+    # TODO - implement
+    pass
 
 
 
@@ -233,8 +261,7 @@ def do_grade(student, pyfile, their_files, student_dir, due_month, due_day, \
             matches = 0
             max_matches = len(outputs[i])
             # try to run the program
-            worked, out, err = run_prog(fdir, true_file, inputs[i], \
-                                        infiles[i], outfiles[i])
+            worked, out, err = run_prog(fdir, true_file, inputs[i], infiles[i])
             if not worked:
                 print(RED + "Program failed to run." + BLK)
                 has_error = True
