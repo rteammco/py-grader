@@ -533,7 +533,6 @@ def read_module(module):
             while i < len(lines) and not lines[i].startswith("INPUT"):
                 i += 1
             i += 1
-            print(lines[i])
             # append each INPUT to the inputs list for this run
             while i < len(lines) and lines[i].startswith(">>>") :
                 inputs[run].append(lines[i].strip()[4:])
@@ -562,7 +561,7 @@ def read_module(module):
                 outputs[run].append(lines[i].strip()[4:])
                 i += 1
             # get the OUTFILES for this run, if any
-            if i < len(lines) and lines[i].startswith("OUTFILE"):
+            while i < len(lines) and lines[i].startswith("OUTFILE"):
                 fname = lines[i].split(' ')[1].strip()
                 fname = OUTFILE_PRE + str(run) + "_" + fname
                 outfiles[run].append(fname)
