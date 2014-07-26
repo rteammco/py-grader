@@ -1,0 +1,3 @@
+#!/bin/bash
+
+python3 grader A1 Test.py 12 12 -m testmod
