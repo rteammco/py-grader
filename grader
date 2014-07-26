@@ -82,14 +82,19 @@ def compute_grade(subtractions, additions):
 # Executes the program and displays its ouput in Blue.
 # Inputs is an optional list of input messages to send through the shell into
 # the running program (given by fPath).
-def run_prog(fpath, inputs = [], infiles = [], outfiles = []):
+def run_prog(fdir, fname, inputs = [], infiles = [], outfiles = []):
     print(BLU)
     worked = True
     out = ""
     err = ""
+    # copy I/O files (if any) to the current student directory
+    for infname in infiles:
+        real_name = '_'.join(infname.split('_')[3:])
+        #copy_file(infname, fpath + real_name)
+        print(fdir, infname, real_name)
     try:
         # open the subprocess and send any/all input to it
-        proc = subprocess.Popen(["python3", fpath], \
+        proc = subprocess.Popen(["python3", fdir + "/" + fname], \
                                 stdin=subprocess.PIPE, \
                                 stdout=subprocess.PIPE, \
                                 stderr=subprocess.PIPE)
@@ -192,7 +197,8 @@ def do_grade(student, pyfile, their_files, student_dir, due_month, due_day, \
     
     # if the file was in fact found, time it, run it, and cat it
     if true_file:
-        fpath = student_dir + "/" + student + "/" + true_file
+        fdir = student_dir + "/" + student
+        fpath = fdir + "/" + true_file
         
         # figure out submission time and deduct points if late
         days_late = get_days_late(fpath, due_day, due_month)
@@ -227,7 +233,8 @@ def do_grade(student, pyfile, their_files, student_dir, due_month, due_day, \
             matches = 0
             max_matches = len(outputs[i])
             # try to run the program
-            worked, out, err = run_prog(fpath, inputs[i])
+            worked, out, err = run_prog(fdir, true_file, inputs[i], \
+                                        infiles[i], outfiles[i])
             if not worked:
                 print(RED + "Program failed to run." + BLK)
                 has_error = True
@@ -297,7 +304,7 @@ def do_grade(student, pyfile, their_files, student_dir, due_month, due_day, \
         
         # if no module provided, just run the program normally once
         if len(inputs) == 0:
-            worked = run_prog(fpath)
+            worked = run_prog(fdir, true_file)
             if not worked:
                 print(RED + "Program failed to run." + BLK)
                 has_error = True
