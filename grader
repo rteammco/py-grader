@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 import sys
 import os
@@ -18,6 +18,7 @@ MONTHS = [
     'Jan', 'Feb', 'Mar', 'Apr', 'May',
     'Jun', 'Jul', 'Aug',
     'Sep', 'Oct', 'Nov', 'Dec']
+FILES_DIR = 'tmp_grader'
 
 # OPTIONAL CONSTANTS
 MIN_DESCRIPTION_LENGTH = 12
@@ -484,6 +485,89 @@ def do_grade(student, pyfile, their_files, student_dir, due_month, due_day, \
 
 
 
+# remove all grader files from the directory to avoid junk files
+def clear_grader_files():
+    # TODO - (possibly) make sure we're in the correct directory!
+    os.system("rm -rf " + FILES_DIR)
+
+
+
+# Create the files directory. If it already exists, remove it first and then
+# create it anew.
+def make_temp_dir():
+    if os.path.isdir(FILES_DIR):
+        clear_grader_files()
+    os.mkdir(FILES_DIR)
+
+
+    
+# Opens the given module file (if possible) and reads it to provide a set of
+# inputs, outputs, answer keys, and file input/outputs.
+def read_module(module):
+    inputs = []
+    infiles = []
+    outputs = []
+    outfiles = []
+    answers = []
+    test_runs = 0
+    if module != "":
+        # read file and determine number of I/O test runs
+        make_temp_dir()
+        mod_file = open(module, "r")
+        lines = mod_file.readlines()
+        mod_file.close()
+        test_runs = int(lines[0][4:])
+        i = 2
+        for run in range(test_runs):
+            inputs.append([])
+            infiles.append([])
+            outputs.append([])
+            outfiles.append([])
+            answers.append([])
+            # append each INPUT to the inputs list for this run
+            while i < len(lines) and lines[i].startswith(">>>") :
+                inputs[run].append(lines[i].strip()[4:])
+                i += 1
+            # get the INFILES for this run, if any
+            while i < len(lines) and lines[i].startswith("INFILE"):
+                fname = lines[i].split(' ')[1].strip()
+                fname = "grader_infile_" + str(run) + "_" + fname
+                infiles[run].append(fname)
+                fname = FILES_DIR + "/" + fname
+                infile = open(fname, "w")
+                i += 1
+                while i < len(lines) and lines[i].startswith(">>>"):
+                    fline = lines[i].strip()[4:]
+                    infile.write(fline + "\n")
+                    i += 1
+                infile.close()
+            # get the expected ANSWERS for this run
+            if i < len(lines):
+                ans = lines[i].split(' ')
+                for j in range(1, len(ans)):
+                    answers[run].append(ans[j].strip())
+            i += 1
+            # get the list of full desired OUTPUTS for this run
+            while i < len(lines) and lines[i].startswith(">>>"):
+                outputs[run].append(lines[i].strip()[4:])
+                i += 1
+            # get the OUTFILES for this run, if any
+            if i < len(lines) and lines[i].startswith("OUTFILE"):
+                fname = lines[i].split(' ')[1].strip()
+                fname = "grader_outfile_" + str(run) + "_" + fname
+                outfiles[run].append(fname)
+                fname = FILES_DIR + "/" + fname
+                outfile = open(fname, "w")
+                i += 1
+                while i < len(lines) and lines[i].startswith(">>>"):
+                    fline = lines[i].strip()[4:]
+                    outfile.write(fline + "\n")
+                    i += 1
+                outfile.close()
+    return inputs, infiles, outputs, outfiles, answers
+
+
+
 # Go through each student's submission and grade it, then write the grades to
 # a file.
 def main(assignment, pyfile, due_month, due_day, module, start):
@@ -497,37 +581,8 @@ def main(assignment, pyfile, due_month, due_day, module, start):
         go = False
 
     # if a grading module was provided, set it up here:
-    inputs = []
-    outputs = []
-    answers = []
-    test_runs = 0
-    if module != "":
-        # read file and determine number of I/O test runs
-        mod_file = open(module, "r")
-        lines = mod_file.readlines()
-        mod_file.close()
-        test_runs = int(lines[0][4:])
-        i = 2
-        for run in range(test_runs):
-            inputs.append([])
-            outputs.append([])
-            # append each input to the inputs list for this run
-            while i < len(lines) and not lines[i].startswith("OUTPUT"):
-                inputs[run].append(lines[i].strip()[4:])
-                i += 1
-            # get the expected answers for this run
-            if i < len(lines):
-                ans = lines[i].split(' ')
-                answerset = []
-                for j in range(1, len(ans)):
-                    answerset.append(ans[j].strip())
-                answers.append(answerset)
-            i += 1
-            # get the list of full desired outputs for this run
-            while i < len(lines) and not lines[i].startswith("INPUT"):
-                outputs[run].append(lines[i].strip()[4:])
-                i += 1
-            i += 1
+    inputs, infiles, outputs, outfiles, answers = read_module(module)
+    print(infiles, outfiles)
 
     # if the file is non-existent/empty or if user wants to start fresh,
     # we need to write the header of the CSV file again
@@ -580,6 +635,9 @@ def main(assignment, pyfile, due_month, due_day, module, start):
     print("Session stats:")
     print("   Number of students graded:", num_graded)
     print("   Average grade:", round(total_grade/num_graded, 2))
+    
+    # clean up any and all grader files
+    clear_grader_files()
 
 
 
