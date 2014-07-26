@@ -20,6 +20,8 @@ MONTHS = [
     'Jun', 'Jul', 'Aug',
     'Sep', 'Oct', 'Nov', 'Dec']
 FILES_DIR = 'tmp_grader'
+INFILE_PRE = 'grader_infile_'
+OUTFILE_PRE = 'grader_outfile_'
 
 # OPTIONAL CONSTANTS
 MIN_DESCRIPTION_LENGTH = 12
@@ -80,7 +82,7 @@ def compute_grade(subtractions, additions):
 # Executes the program and displays its ouput in Blue.
 # Inputs is an optional list of input messages to send through the shell into
 # the running program (given by fPath).
-def run_prog(fpath, inputs = []):
+def run_prog(fpath, inputs = [], infiles = [], outfiles = []):
     print(BLU)
     worked = True
     out = ""
@@ -156,7 +158,7 @@ def get_days_late(fpath, due_day, due_month):
 # of files in their directory path. This part also recognizes late submissions
 # and incorrect file names.
 def do_grade(student, pyfile, their_files, student_dir, due_month, due_day, \
-             inputs, outputs, answers, freq_comments):
+             inputs, infiles, outputs, outfiles, answers, freq_comments):
     cls()
     print("STUDENT:", student)
 
@@ -215,6 +217,7 @@ def do_grade(student, pyfile, their_files, student_dir, due_month, due_day, \
         has_error = False
         output_grade = 0
         answer_grade = 0
+        
         # if there is a module, run program with the desired input/output values
         for i in range(len(inputs)):
             print(div())
@@ -475,8 +478,8 @@ def do_grade(student, pyfile, their_files, student_dir, due_month, due_day, \
     ans = input("Done. Type 'r' to redo this grade, or 'q' to quit. ")
     quit = False
     if ans.lower() == "r": # redo this grade
-        do_grade(student, pyfile, their_files, student_dir, due_month, \
-                 due_day, inputs, outputs, answers, freq_comments)
+        do_grade(student, pyfile, their_files, student_dir, due_month, due_day,\
+                 inputs, infiles, outputs, outfiles, answers, freq_comments)
     elif ans.lower() == "q": # quit after writing this grade
         quit = True
 
@@ -489,7 +492,8 @@ def do_grade(student, pyfile, their_files, student_dir, due_month, due_day, \
 # remove all grader files from the directory to avoid junk files
 def clear_grader_files():
     # TODO - (possibly) make sure we're in the correct directory!
-    os.system("rm -rf " + FILES_DIR)
+    if os.path.isdir(FILES_DIR):
+        os.system("rm -rf " + FILES_DIR)
 
 
 
@@ -532,7 +536,7 @@ def read_module(module):
             # get the INFILES for this run, if any
             while i < len(lines) and lines[i].startswith("INFILE"):
                 fname = lines[i].split(' ')[1].strip()
-                fname = "grader_infile_" + str(run) + "_" + fname
+                fname = INFILE_PRE + str(run) + "_" + fname
                 infiles[run].append(fname)
                 fname = FILES_DIR + "/" + fname
                 infile = open(fname, "w")
@@ -555,7 +559,7 @@ def read_module(module):
             # get the OUTFILES for this run, if any
             if i < len(lines) and lines[i].startswith("OUTFILE"):
                 fname = lines[i].split(' ')[1].strip()
-                fname = "grader_outfile_" + str(run) + "_" + fname
+                fname = OUTFILE_PRE + str(run) + "_" + fname
                 outfiles[run].append(fname)
                 fname = FILES_DIR + "/" + fname
                 outfile = open(fname, "w")
@@ -565,6 +569,7 @@ def read_module(module):
                     outfile.write(fline + "\n")
                     i += 1
                 outfile.close()
+            i += 1
     return inputs, infiles, outputs, outfiles, answers
 
 
@@ -580,10 +585,11 @@ def main(assignment, pyfile, due_month, due_day, module, start):
     go = True
     if start != "":
         go = False
-
+    
     # if a grading module was provided, set it up here:
     inputs, infiles, outputs, outfiles, answers = read_module(module)
-    print(infiles, outfiles)
+    print(infiles)
+    print(outfiles)
 
     # if the file is non-existent/empty or if user wants to start fresh,
     # we need to write the header of the CSV file again
@@ -615,8 +621,8 @@ def main(assignment, pyfile, due_month, due_day, module, start):
         # get the student's submissions and grade the file
         files = os.listdir(fpath + "/" + student)
         usr_grade, quit = do_grade(student, pyfile, files, fpath, \
-                                   due_month, due_day, \
-                                   inputs, outputs, answers, freq_comments)
+                                   due_month, due_day, inputs, infiles, \
+                                   outputs, outfiles, answers, freq_comments)
         num_graded += 1
         total_grade += int(usr_grade[1])
         
@@ -646,6 +652,7 @@ def main(assignment, pyfile, due_month, due_day, module, start):
 def exit_nicely(signal, frame):
     print("\n")
     print("Quitting! Current student grade has not been saved.\n")
+    clear_grader_files()
     exit(0)
 
 
