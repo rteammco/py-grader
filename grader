@@ -123,6 +123,60 @@ def run_prog(fdir, fname, inputs = [], infiles = []):
 
 
 
+# Compare two lists of outputs (one given, one expected), and return a grade
+# from 0 to 1 based on how close the output is to the expected set. Optional
+# answer keywords can also be graded on a 0 or 1 binary scale. 1 is returned
+# if no answers are required.
+def compare_outputs(output_lines, expected_lines, answers = []):
+    # ignore any empty lines in the lists
+    out = list(filter(("").__ne__, output_lines))
+    expected = list(filter(("").__ne__, expected_lines))
+    
+    # convert lists into a single comparable string
+    out = ''.join(output_lines)
+    expected = ''.join(expected_lines)
+    
+    # find the similarity value between the actual and expected output
+    ratio = str_similarity(out, expected)
+
+    # if there is a big difference in output length, take off more
+    big_diff = False
+    if abs(len(out) - len(expected)) >= len(expected) / 2:
+        big_diff = True
+
+    # compute output grade
+    if big_diff:
+        ratio -= 0.5
+    output_grade = max(0, ratio)
+    
+    # now also check that all answer keywords are found and are correct
+    answer_grader = 0
+    num_correct = 0
+    for ans in answers:
+        if ans in out:
+            num_correct += 1
+    if len(answers) == num_correct:
+        answer_grade = 1
+
+    # if outputs didn't match, tell the grader about it
+    if out != expected:
+        print(RED + "Mismatched line in output: " + BLK \
+                  + str(round(ratio*100, 2)) + "% match")
+        print("Expected: '" + expected + "'")
+        print("     Got: '" + out + "'")
+        if big_diff:
+            print(RED + "Big output difference detected: " + BLK \
+                      + "(-5% more)")
+        if num_correct < len(answers[i]):
+            print(RED + "Wrong answer detected: " + BLK + "(" \
+                      + ', '.join(answers) + " expected).")
+    else:
+        print(GRN + "Output matched (correct)!" + BLK)
+    
+    return output_grade, answer_grade
+
+
+
 # Does a comparison check to see if the files outputted by the program are
 # correct.
 def check_output_files(fdir, outfiles):
@@ -292,47 +346,50 @@ def do_grade(student, pyfile, their_files, student_dir, due_month, due_day, \
 
             # remove empty lines from the output (we will ignore those)
             out = out.split("\n")[:-1]
-            real_out = '\n'.join(out)
-            out = list(filter(("").__ne__, out))
-            # stick expected outputs and actual outputs on one line and compare
-            out = ''.join(out)
-            expected = ''.join(outputs[i])
-            real_expected = '\n'.join(outputs[i])
-            ratio = str_similarity(out, expected)
-
-            # if there is a big difference in output length, take off more
-            big_diff = False
-            if abs(len(out) - len(expected)) >= len(expected) / 2:
-                big_diff = True
-
-            # now also check answers and make sure that (if any) answers are
-            # correct - answers are "keywords" in the output that indicate
-            # the correct result
-            num_correct = 0
-            for ans in answers[i]:
-                if ans in out:
-                    num_correct += 1
-            if len(answers[i]) == num_correct:
-                answer_grade += 1
-
-            # if outputs didn't match, tell the grader about it
-            if out != expected:
-                print(RED + "Mismatched line in output: " + BLK \
-                          + str(round(ratio*100, 2)) + "% match")
-                print("Expected: '" + expected + "'")
-                print("     Got: '" + out + "'")
-                if big_diff:
-                    print(RED + "Big output difference detected: " + BLK \
-                              + "(-5% more)")
-                if num_correct < len(answers[i]):
-                    print(RED + "Wrong answer detected: " + BLK + "(" \
-                              + ', '.join(answers[i]) + " expected).")
-            else:
-                print(GRN + "Output matched (correct)!" + BLK)
-            # if mismatch is really extreme, take off another 5 points
-            if big_diff:
-                ratio -= 0.5
-            output_grade += max(0, ratio)
+            out_grade, ans_grade = compare_outputs(out, outputs[i], answers[i])
+            output_grade += out_grade
+            answer_grade += ans_grade
+#             real_out = '\n'.join(out)
+#             out = list(filter(("").__ne__, out))
+#             # stick expected outputs and actual outputs on one line and compare
+#             out = ''.join(out)
+#             expected = ''.join(outputs[i])
+#             real_expected = '\n'.join(outputs[i])
+#             ratio = str_similarity(out, expected)
+# 
+#             # if there is a big difference in output length, take off more
+#             big_diff = False
+#             if abs(len(out) - len(expected)) >= len(expected) / 2:
+#                 big_diff = True
+# 
+#             # now also check answers and make sure that (if any) answers are
+#             # correct - answers are "keywords" in the output that indicate
+#             # the correct result
+#             num_correct = 0
+#             for ans in answers[i]:
+#                 if ans in out:
+#                     num_correct += 1
+#             if len(answers[i]) == num_correct:
+#                 answer_grade += 1
+# 
+#             # if outputs didn't match, tell the grader about it
+#             if out != expected:
+#                 print(RED + "Mismatched line in output: " + BLK \
+#                           + str(round(ratio*100, 2)) + "% match")
+#                 print("Expected: '" + expected + "'")
+#                 print("     Got: '" + out + "'")
+#                 if big_diff:
+#                     print(RED + "Big output difference detected: " + BLK \
+#                               + "(-5% more)")
+#                 if num_correct < len(answers[i]):
+#                     print(RED + "Wrong answer detected: " + BLK + "(" \
+#                               + ', '.join(answers[i]) + " expected).")
+#             else:
+#                 print(GRN + "Output matched (correct)!" + BLK)
+#             # if mismatch is really extreme, take off another 5 points
+#             if big_diff:
+#                 ratio -= 0.5
+#             output_grade += max(0, ratio)
             
         # compute average grade of output using the sum of all comparisons
         if(len(inputs) > 0):
@@ -644,8 +701,6 @@ def main(assignment, pyfile, due_month, due_day, module, start):
     
     # if a grading module was provided, set it up here:
     inputs, infiles, outputs, outfiles, answers = read_module(module)
-    print(infiles)
-    print(outfiles)
 
     # if the file is non-existent/empty or if user wants to start fresh,
     # we need to write the header of the CSV file again
