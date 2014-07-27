@@ -41,26 +41,26 @@ HAS_ERROR = 30
 
 
 
-# Returns a standard 60-character divider to print out.
 def div():
+    """ Returns a standard 60-character divider to print out. """
     return "------------------------------------------------------------"
 
 
 
-# Calls the clear screen command.
 def cls():
+    """ Calls the clear screen command. """
     subprocess.call(["clear"])
 
 
 
-# Returns the similarity ratio between two strings.
 def str_similarity(one, two):
-     return difflib.SequenceMatcher(None, one, two).ratio()
+    """ Returns the similarity ratio between two strings. """
+    return difflib.SequenceMatcher(None, one, two).ratio()
 
 
 
-# Prints the list of issues with the program.
 def show_issues(issues):
+    """ Prints the list of issues with the program. """
     print()
     print(RED)
     for i in range(len(issues)):
@@ -69,8 +69,8 @@ def show_issues(issues):
 
 
 
-# Adds up the total grade values using the subtractions and additions lists
 def compute_grade(subtractions, additions):
+    """ Adds up the total grade using the subtractions and additions lists. """
     result = 100
     for sub in subtractions:
         result -= sub
@@ -80,17 +80,19 @@ def compute_grade(subtractions, additions):
 
 
 
-# calls the OS command to copy the given file into the given directory.
 def copy_file(src, dest):
+    """ Calls the OS command to copy the given file into given directory. """
     cmd = "cp " + src + " " + dest
     os.system(cmd)
 
 
 
-# Executes the program and displays its ouput in Blue.
-# Inputs is an optional list of input messages to send through the shell into
-# the running program (given by fPath).
 def run_prog(fdir, fname, inputs = [], infiles = []):
+    """
+    Executes the program and displays its ouput in Blue.
+    Inputs is an optional list of input messages to send through the shell into
+    the running program (given by fPath).
+    """
     print(BLU)
     worked = True
     out = ""
@@ -124,12 +126,14 @@ def run_prog(fdir, fname, inputs = [], infiles = []):
 
 
 
-# Compare two lists of outputs (one given, one expected), and return a grade
-# from 0 to 1 based on how close the output is to the expected set. Optional
-# answer keywords can also be graded on a 0 or 1 binary scale. 1 is returned
-# if no answers are required. The is_file flag switches prints if the output
-# is for a file to avoid confusion for the grader.
 def compare_outputs(out_lines, expected_lines, answers = [], is_file = False):
+    """
+    Compare two lists of outputs (one given, one expected), and return a grade
+    from 0 to 1 based on how close the output is to the expected set. Optional
+    answer keywords can also be graded on a 0 or 1 binary scale. 1 is returned
+    if no answers are required. The is_file flag switches prints if the output
+    is for a file to avoid confusion for the grader.
+    """
     # ignore any empty lines in the lists
     out = list(filter(("").__ne__, out_lines))
     expected = list(filter(("").__ne__, expected_lines))
@@ -180,9 +184,11 @@ def compare_outputs(out_lines, expected_lines, answers = [], is_file = False):
 
 
 
-# Does a comparison check to see if the files outputted by the program are
-# correct. Optionally, provide an "answers" list to check for answer keywords.
 def check_output_files(fdir, outfiles, answers = []):
+    """
+    Does a comparison check to see if the files outputted by the program are
+    correct. Optionally, provide an "answers" list to check for answer keywords.
+    """
     output_grade = 0
     answers_grade = 0
     for outfname in outfiles:
@@ -218,9 +224,11 @@ def check_output_files(fdir, outfiles, answers = []):
 
 
 
-# Clean up all of the input and output files placed in the grading directory
-# while testing the program.
 def clean_io_files(fdir, infiles, outfiles):
+    """
+    Clean up all of the input and output files placed in the grading directory
+    while testing the program.
+    """
     all_files = infiles + outfiles
     for fname in all_files:
         real_name = '_'.join(fname.split('_')[3:])
@@ -230,11 +238,13 @@ def clean_io_files(fdir, infiles, outfiles):
 
 
 
-# Looks through the given list of files to find the best match to "pyFile".
-# Returns:
-#   The actual file name, or None if the file doesn't exist.
-#   True if the file name was correct, False otherwise.
 def find_uploaded_file(pyfile, their_files):
+    """
+    Looks through the given list of files to find the best match to "pyFile".
+    Returns:
+      The actual file name, or None if the file doesn't exist.
+      True if the file name was correct, False otherwise.
+    """
     their_files_lwr = list(map(str.lower, their_files))
     # if file is named correctly and exists, all is good
     if pyfile in their_files:
@@ -254,10 +264,12 @@ def find_uploaded_file(pyfile, their_files):
 
 
 
-# Computes how many days late this file was submitted and returns the
-# approximate number of days estimate. Returns 0 if this file was submitted
-# on time.
 def get_days_late(fpath, due_day, due_month):
+    """
+    Computes how many days late this file was submitted and returns the
+    approximate number of days estimate. Returns 0 if this file was submitted
+    on time.
+    """
     mtime = os.path.getmtime(fpath)
     timestamp = time.ctime(mtime)
     timestamp = timestamp.split(' ')
@@ -276,11 +288,13 @@ def get_days_late(fpath, due_day, due_month):
 
 
 
-# Grades the student's submission by trying to match the file to their list
-# of files in their directory path. This part also recognizes late submissions
-# and incorrect file names.
 def do_grade(student, pyfile, their_files, student_dir, due_month, due_day, \
              inputs, infiles, outputs, outfiles, answers, freq_comments):
+    """
+    Grades the student's submission by trying to match the file to their list
+    of files in their directory path. This part also recognizes late submissions
+    and incorrect file names.
+    """
     cls()
     print("STUDENT:", student)
 
@@ -603,26 +617,30 @@ def do_grade(student, pyfile, their_files, student_dir, due_month, due_day, \
 
 
 
-# remove all grader files from the directory to avoid junk files
 def clear_grader_files():
+    """ Removes all grader files from the directory to avoid junk files. """
     # TODO - (possibly) make sure we're in the correct directory!
     if os.path.isdir(FILES_DIR):
         os.system("rm -rf " + FILES_DIR)
 
 
 
-# Create the files directory. If it already exists, remove it first and then
-# create it anew.
 def make_temp_dir():
+    """
+    Create the files directory. If it already exists, remove it first and then
+    create it anew.
+    """
     if os.path.isdir(FILES_DIR):
         clear_grader_files()
     os.mkdir(FILES_DIR)
 
 
     
-# Opens the given module file (if possible) and reads it to provide a set of
-# inputs, outputs, answer keys, and file input/outputs.
 def read_module(module):
+    """
+    Opens the given module file (if possible) and reads it to provide a set of
+    inputs, outputs, answer keys, and file input/outputs.
+    """
     inputs = []
     infiles = []
     outputs = []
@@ -691,9 +709,11 @@ def read_module(module):
 
 
 
-# Go through each student's submission and grade it, then write the grades to
-# a file.
 def main(assignment, pyfile, due_month, due_day, module, start):
+    """
+    Go through each student's submission and grade it, then write the grades to
+    a file.
+    """
     # set up date, file path, and first person to start grading
     due_month = int(due_month)
     due_day = int(due_day)
@@ -763,8 +783,8 @@ def main(assignment, pyfile, due_month, due_day, module, start):
 
 
 
-# interrupt signal function gracefully handles interrupting and exitting
 def exit_nicely(signal, frame):
+    """ Interrupt signal function to gracefully handle exiting. """
     print("\n")
     print("Quitting! Current student grade has not been saved.\n")
     clear_grader_files()
@@ -772,8 +792,8 @@ def exit_nicely(signal, frame):
 
 
 
-# Check parameters and call main() with the appropriate values.
 if __name__ == '__main__':
+    """ Checks arguments and calls main() with the appropriate values. """
     # set up graceful exit if ctrl-c is pressed
     signal.signal(signal.SIGINT, exit_nicely)
     # process arguments
