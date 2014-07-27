@@ -169,7 +169,7 @@ def compare_outputs(out_lines, expected_lines, answers = [], is_file = False):
         if big_diff:
             print(RED + "Big output difference detected: " + BLK \
                       + "(-5% more)")
-        if num_correct < len(answers[i]):
+        if num_correct < len(answers):
             print(RED + "Wrong answer detected: " + BLK + "(" \
                       + ', '.join(answers) + " expected).")
     else:
