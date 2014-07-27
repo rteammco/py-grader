@@ -127,17 +127,32 @@ def run_prog(fdir, fname, inputs = [], infiles = []):
 # correct.
 def check_output_files(fdir, outfiles):
     for outfname in outfiles:
+        # TODO - if outfile doesn't exist, return 0 for a grade
         real_name = '_'.join(outfname.split('_')[3:])
-        # open and check
-    # TODO - implement
+        f_output = open(fdir + "/" + real_name)
+        output = f_output.readlines()
+        f_output.close()
+        
+        f_expected = open(FILES_DIR + "/" + outfname, "r")
+        expected = f_expected.readlines()
+        f_expected.close()
+        
+        # TODO - implement a match function and compare similarity
+        print(expected)
+        print(output)
 
 
 
 # Clean up all of the input and output files placed in the grading directory
 # while testing the program.
 def clean_io_files(fdir, infiles, outfiles):
-    # TODO - implement
-    pass
+    all_files = infiles + outfiles
+    for fname in all_files:
+        real_name = '_'.join(fname.split('_')[3:])
+        fpath = fdir + "/" + real_name
+        if os.path.isfile(fpath):
+            print(fpath)
+            os.system("rm " + fpath)
 
 
 
@@ -270,6 +285,10 @@ def do_grade(student, pyfile, their_files, student_dir, due_month, due_day, \
                 print(RED + "Program may have failed to run." + BLK)
                 has_error = True
                 continue
+            
+            # look at output files and compare them, and clean up
+            check_output_files(fdir, outfiles[i])
+            clean_io_files(fdir, infiles[i], outfiles[i])
 
             # remove empty lines from the output (we will ignore those)
             out = out.split("\n")[:-1]
