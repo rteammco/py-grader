@@ -87,6 +87,8 @@ def copy_file(src, dest):
 
 
 
+MANUALLY_STOPPED = False # global flag set if grader killed the program
+DOING_TEST_RUN = False # global flag to differentiate grader's ctrl+c inputs
 def run_prog(fdir, fname, inputs = [], infiles = []):
     """
     Executes the program and displays its ouput in Blue.
@@ -102,6 +104,8 @@ def run_prog(fdir, fname, inputs = [], infiles = []):
     for infname in infiles:
         real_name = '_'.join(infname.split('_')[3:])
         copy_file(FILES_DIR + "/" + infname, fdir + "/" + real_name)
+    MANUALLY_STOPPED = False
+    DOING_TEST_RUN = True
     try:
         # open the subprocess and send any/all input to it
         os.chdir(fdir)
@@ -119,6 +123,7 @@ def run_prog(fdir, fname, inputs = [], infiles = []):
         proc.terminate()
     except:
         worked = False
+    DOING_TEST_RUN = False
     # change back to base directory and return results
     os.chdir(cur_dir)
     print(BLK, end="")
@@ -380,7 +385,10 @@ def do_grade(student, pyfile, their_files, student_dir, due_month, due_day, \
                 has_error = True
                 continue
             if "error" in err.lower():
-                print(RED + "Program may have failed to run." + BLK)
+                if MANUALLY_STOPPED:
+                    print(RED + "Program terminated." + BLK)
+                else:
+                    print(RED + "Program may have failed to run." + BLK)
                 has_error = True
                 continue
 
@@ -477,8 +485,12 @@ def do_grade(student, pyfile, their_files, student_dir, due_month, due_day, \
 
         # go through each flag and take off points for it
         if has_error:
-            issues.append("Program did not run: -" + str(HAS_ERROR))
-            comments.append("Program did not run [-" + str(HAS_ERROR) + "].")
+            if MANUALLY_STOPPED:
+                descript = "Program stucked (manually stopped)"
+            else:
+                descript = "Program did not run"
+            issues.append(descript + ": -" + str(HAS_ERROR))
+            comments.append(descript + " [-" + str(HAS_ERROR) + "].")
             subtractions.append(HAS_ERROR)
         if answers_graded and answer_grade < 1:
             answer_sub = round(WRONG_ANSWER * (1 - answer_grade))
@@ -797,8 +809,12 @@ def main(assignment, pyfile, due_month, due_day, module, start):
 def exit_nicely(signal, frame):
     """ Interrupt signal function to gracefully handle exiting. """
     print("\n")
-    print("Quitting! Current student grade has not been saved.\n")
-    clear_grader_files()
+    if DOING_TEST_RUN:
+        print("Manually stopping the program.\n")
+        MANUALLY_STOPPED = True
+    else:
+        print("Quitting! Current student grade has not been saved.\n")
+        clear_grader_files()
     exit(0)
 
 
