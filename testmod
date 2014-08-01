@@ -1,0 +1,27 @@
+RUN 2
+
+
+INPUT
+INFILE testFile.txt
+>>> This is some contents.
+>>> This is more file contents.
+>>> More more more!
+INFILE testFile2.txt
+>>> This is another testfile.
+OUTPUT
+>>> More more more!
+OUTFILE output.txt
+>>> Line 1.
+>>> Line 2.
+>>> Line 3.
+OUTFILE output2.txt
+>>> This is another testfile.
+
+
+INPUT
+INFILE testFile.txt
+>>> This is another file.
+OUTPUT
+>>> This is another file.
+OUTFILE output.txt
+>>> Line 1.
