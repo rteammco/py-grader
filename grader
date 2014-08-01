@@ -135,6 +135,8 @@ def compare_outputs(out_lines, expected_lines, answers = [], is_file = False):
     is for a file to avoid confusion for the grader.
     """
     # ignore any empty lines in the lists
+    out_lines = list(map(str.rstrip, out_lines))
+    expected_lines = list(map(str.rstrip, expected_lines))
     out = list(filter(("").__ne__, out_lines))
     expected = list(filter(("").__ne__, expected_lines))
     
