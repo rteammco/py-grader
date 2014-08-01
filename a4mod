@@ -20,7 +20,9 @@ INPUT
 OUTPUT 9 19
 >>> Enter starting number of the range: Enter ending number of the range: The number 9 has the longest cycle length of 19.
 INPUT
+>>> -2
+>>> -3
 >>> 2
 >>> 3
 OUTPUT 3 7
->>> Enter starting number of the range: Enter ending number of the range: The number 3 has the longest cycle length of 7.
+>>> Enter starting number of the range: Enter ending number of the range: Enter starting number of the range: Enter ending number of the range: The number 3 has the longest cycle length of 7.
