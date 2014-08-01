@@ -444,7 +444,7 @@ def do_grade(student, pyfile, their_files, student_dir, due_month, due_day, \
         cls()
         print(div())
         for line in f:
-            line = line.strip()
+            line = line.rstrip()
             print(line)
             # check for main()
             if not at_header and not has_main and "main" in line:
