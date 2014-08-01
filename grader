@@ -242,24 +242,29 @@ def clean_io_files(fdir, infiles, outfiles):
 
 def find_uploaded_file(pyfile, their_files):
     """
-    Looks through the given list of files to find the best match to "pyFile".
+    Looks through the given list of files to find the best match to "pyfile".
     Returns:
       The actual file name, or None if the file doesn't exist.
       True if the file name was correct, False otherwise.
     """
-    their_files_lwr = list(map(str.lower, their_files))
     # if file is named correctly and exists, all is good
     if pyfile in their_files:
         return pyfile, True
     # file lowercase (bad)
-    if pyfile.lower() in their_files_lwr:
+    if pyfile.lower() in their_files:
         return pyfile.lower(), False
+    # file uppercase (bad)
+    if pyfile.upper() in their_files:
+        return pyfile.upper(), False
     # file missing extension (bad)
     elif pyfile[:-3] in their_files:
         return pyfile[:-3], False
     # file missing extension and lowercase (bad)
-    elif pyfile[:-3].lower() in their_files_lwr:
+    elif pyfile[:-3].lower() in their_files:
         return pyfile[:-3].lower(), False
+    # file missing extension and uppercase (bad)
+    elif pyfile[:-3].upper() in their_files:
+        return pyfile[:-3].upper(), False
     # file not found at all, print an error and do a manual check
     else:
         return None, False
