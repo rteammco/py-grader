@@ -158,7 +158,7 @@ def compare_outputs(out_lines, expected_lines, answers = [], is_file = False):
     output_grade = max(0, ratio)
     
     # now also check that all answer keywords are found and are correct
-    answer_grader = 0
+    answer_grade = 0
     num_correct = 0
     for ans in answers:
         if ans in out:
@@ -605,7 +605,7 @@ def do_grade(student, pyfile, their_files, student_dir, due_month, due_day, \
     usr_grade = []
     usr_grade.append(student)
     usr_grade.append(grade)
-    usr_grade.append(cmnts)
+    usr_grade.append(cmnts.rstrip())
     print(usr_grade)
     ans = input("Done. Type 'r' to redo this grade, or 'q' to quit. ")
     quit = False
