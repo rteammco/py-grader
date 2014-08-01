@@ -275,7 +275,7 @@ def get_days_late(fpath, due_day, due_month):
     """
     Computes how many days late this file was submitted and returns the
     approximate number of days estimate. Returns 0 if this file was submitted
-    on time.
+    on time. Also returns the month/day tuple.
     """
     mtime = os.path.getmtime(fpath)
     timestamp = time.ctime(mtime)
@@ -289,9 +289,9 @@ def get_days_late(fpath, due_day, due_month):
         approx = day - due_day
         if month > due_month:
             approx += 30
-        return approx
+        return approx, (month, day)
     else:
-        return 0
+        return 0, (month, day)
 
 
 
@@ -339,7 +339,7 @@ def do_grade(student, pyfile, their_files, student_dir, due_month, due_day, \
         fpath = fdir + "/" + true_file
         
         # figure out submission time and deduct points if late
-        days_late = get_days_late(fpath, due_day, due_month)
+        days_late, true_date = get_days_late(fpath, due_day, due_month)
         if days_late > 0:
             penalty = days_late * LATE_PER_DAY
             subtractions.append(penalty)
@@ -349,13 +349,14 @@ def do_grade(student, pyfile, their_files, student_dir, due_month, due_day, \
                 penalty = "-" + str(penalty)
             # day or days? it matters!
             days = "days"
-            if approx == 1:
+            if days_late == 1:
                 days = "day"
-            issues.append("Late: " + str(month) + "/" + str(day) + " (due " +\
-                          str(due_month) + "/" + str(due_day) + ")" +\
-                          " [approx " + str(approx) + " " + days +\
-                          " late]: " + penalty)
-            comments.append(str(approx) + " " + days + " late ["+penalty+"].")
+            issues.append("Late: " + str(true_date[0]) + "/" +\
+                          str(true_date[1]) + " (due " + str(due_month) +\
+                          "/" + str(due_day) + ")" + " [approx " +\
+                          str(days_late) + " " + days + " late]: " + penalty)
+            comments.append(str(days_late) + " " + days +\
+                            " late [" + penalty + "].")
 
         # grade flags for trying to run the program
         has_error = False
