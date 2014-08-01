@@ -478,6 +478,7 @@ def do_grade(student, pyfile, their_files, student_dir, due_month, due_day, \
             answer_sub = round(WRONG_ANSWER * (1 - answer_grade))
             issues.append("Wrong answer(s): -" + str(answer_sub))
             comments.append("Wrong answer(s) [-" + str(answer_sub) + "]")
+            subtractions.append(answer_sub)
         if files_graded and file_grade < 1:
             answer_sub = round(BAD_FILE_OUTPUT * (1 - file_grade))
             issues.append("Wrong file output(s): -" + str(answer_sub))
