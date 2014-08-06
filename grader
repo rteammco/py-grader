@@ -423,7 +423,7 @@ def do_grade(student, pyfile, their_files, student_dir, due_month, due_day, \
         
         # similarly do so for the file grade
         if num_outfiles > 0:
-            file_grade /= len(num_outfiles)
+            file_grade /= num_outfiles
             files_graded = True
         else:
             files_graded = False
