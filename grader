@@ -132,7 +132,8 @@ def run_prog(fdir, fname, inputs = [], infiles = []):
 
 
 
-def compare_outputs(out_lines, expected_lines, answers = [], is_file = False):
+def compare_outputs(out_lines, expected_lines, ignore_spc,
+                    answers = [], is_file = False):
     """
     Compare two lists of outputs (one given, one expected), and return a grade
     from 0 to 1 based on how close the output is to the expected set. Optional
@@ -149,6 +150,11 @@ def compare_outputs(out_lines, expected_lines, answers = [], is_file = False):
     # convert lists into a single comparable string
     out = ''.join(out)
     expected = ''.join(expected_lines)
+    
+    # if spacing is ignored, remove all spaces:
+    if ignore_spc:
+        out = ''.join(out.split())
+        expected = ''.join(expected.split())
     
     # find the similarity value between the actual and expected output
     ratio = str_similarity(out, expected)
@@ -192,7 +198,7 @@ def compare_outputs(out_lines, expected_lines, answers = [], is_file = False):
 
 
 
-def check_output_files(fdir, outfiles, answers = []):
+def check_output_files(fdir, outfiles, ignore_spc, answers = []):
     """
     Does a comparison check to see if the files outputted by the program are
     correct. Optionally, provide an "answers" list to check for answer keywords.
@@ -235,8 +241,8 @@ def check_output_files(fdir, outfiles, answers = []):
         f_expected.close()
         
         # compare them and grade by output similarity
-        out_grade, ans_grade = compare_outputs(output, expected, answers, \
-                                               is_file = True)
+        out_grade, ans_grade = compare_outputs(output, expected, ignore_spc, \
+                                               answers, is_file = True)
         output_grade += out_grade
         answers_grade += ans_grade
     
@@ -318,7 +324,8 @@ def get_days_late(fpath, due_day, due_month):
 
 
 
-def do_grade(student, pyfile, their_files, student_dir, due_month, due_day, \
+def do_grade(student, pyfile, their_files, student_dir, ignore_spc, \
+             due_month, due_day, \
              inputs, infiles, outputs, outfiles, answers, freq_comments):
     """
     Grades the student's submission by trying to match the file to their list
@@ -415,7 +422,8 @@ def do_grade(student, pyfile, their_files, student_dir, due_month, due_day, \
 
             # remove empty lines from the output (we will ignore those)
             out = out.split("\n")[:-1]
-            out_grade, ans_grade = compare_outputs(out, outputs[i], answers[i])
+            out_grade, ans_grade = \
+                compare_outputs(out, outputs[i], ignore_spc, answers[i])
             output_grade += out_grade
             answer_grade += ans_grade
             
@@ -424,7 +432,7 @@ def do_grade(student, pyfile, their_files, student_dir, due_month, due_day, \
                 num_outfiles += len(outfiles[i])
                 print(div())
                 f_grade, ans_grade, fname_grade = \
-                    check_output_files(fdir, outfiles[i])
+                    check_output_files(fdir, outfiles[i], ignore_spc)
                 file_grade += f_grade
                 file_name_grade += fname_grade
                 # TODO - file answer support and append to answers grade
@@ -447,7 +455,9 @@ def do_grade(student, pyfile, their_files, student_dir, due_month, due_day, \
         # similarly do so for the file grade
         if num_outfiles > 0:
             file_grade /= num_outfiles
+            file_grade = math.floor(file_grade*10) / 10 # round down
             file_name_grade /= num_outfiles
+            file_name_grade = math.floor(file_name_grade*10) / 10 # round down
             files_graded = True
         else:
             files_graded = False
@@ -672,7 +682,8 @@ def do_grade(student, pyfile, their_files, student_dir, due_month, due_day, \
     ans = input("Done. Type 'r' to redo this grade, or 'q' to quit. ")
     quit = False
     if ans.lower() == "r": # redo this grade
-        do_grade(student, pyfile, their_files, student_dir, due_month, due_day,\
+        do_grade(student, pyfile, their_files, student_dir, ignore_spc, \
+                 due_month, due_day,\
                  inputs, infiles, outputs, outfiles, answers, freq_comments)
     elif ans.lower() == "q": # quit after writing this grade
         quit = True
@@ -775,7 +786,7 @@ def read_module(module):
 
 
 
-def main(assignment, pyfile, due_month, due_day, module, start):
+def main(assignment, pyfile, due_month, due_day, module, start, ignore_spc):
     """
     Go through each student's submission and grade it, then write the grades to
     a file.
@@ -821,7 +832,7 @@ def main(assignment, pyfile, due_month, due_day, module, start):
                 continue
         # get the student's submissions and grade the file
         files = os.listdir(fpath + "/" + student)
-        usr_grade, quit = do_grade(student, pyfile, files, fpath, \
+        usr_grade, quit = do_grade(student, pyfile, files, fpath, ignore_spc, \
                                    due_month, due_day, inputs, infiles, \
                                    outputs, outfiles, answers, freq_comments)
         num_graded += 1
@@ -876,10 +887,14 @@ if __name__ == '__main__':
         # check for options
         module = ""
         start = ""
+        ignore_spacing = False
         remaining_args = sys.argv[5:]
         for i in range(len(remaining_args)):
             if remaining_args[i] == "-m" and len(remaining_args) > i+1:
                 module = remaining_args[i+1]
             elif remaining_args[i] == "-s" and len(remaining_args) > i+1:
                 start = remaining_args[i+1]
-        main(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], module, start)
+            elif remaining_args[i] == "-i":
+                ignore_spacing = True
+        main(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4],
+            module, start, ignore_spacing)
