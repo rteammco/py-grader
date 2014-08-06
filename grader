@@ -259,7 +259,7 @@ def clean_io_files(fdir, infiles, outfiles):
         real_name = '_'.join(fname.split('_')[3:])
         fpath = fdir + "/" + real_name
         if os.path.isfile(fpath):
-            os.system("rm " + fpath)
+            os.system("rm \"" + fpath + "\"")
 
 
 
