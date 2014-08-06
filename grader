@@ -35,6 +35,7 @@ NO_COMMENTS = 10
 WRONG_FNAME = 5
 BAD_OUTPUT = 10
 BAD_FILE_OUTPUT = 10
+BAD_FILE_NAME = 5
 WRONG_ANSWER = 20
 LATE_PER_DAY = 10
 HAS_ERROR = 30
@@ -198,6 +199,7 @@ def check_output_files(fdir, outfiles, answers = []):
     """
     output_grade = 0
     answers_grade = 0
+    fname_grade = 0
     for outfname in outfiles:
         real_name = '_'.join(outfname.split('_')[3:])
         fpath = fdir + "/" + real_name
@@ -206,7 +208,9 @@ def check_output_files(fdir, outfiles, answers = []):
         # TODO - take off points if file has a bad name
         print("Checking file: " + real_name)
         no_file = False
+        good_fname = True
         while not os.path.isfile(fpath):
+            good_fname = False
             print(RED + "Expected output file \"" + real_name + \
                         "\" not found." + BLK)
             student_files = os.listdir(fdir)
@@ -219,6 +223,8 @@ def check_output_files(fdir, outfiles, answers = []):
                 fpath = fdir + "/" + ans
         if no_file:
             continue
+        if good_fname:
+            fname_grade += 1
         
         # read the output file and the expected file into lists
         f_output = open(fpath)
@@ -236,9 +242,10 @@ def check_output_files(fdir, outfiles, answers = []):
     
     if len(outfiles) > 0:
         output_grade /= len(outfiles)
+        fname_grade /= len(outfiles)
     if len(answers) > 0:
         answers_grade /= len(answers)
-    return output_grade, answers_grade
+    return output_grade, answers_grade, fname_grade
 
 
 
@@ -380,6 +387,7 @@ def do_grade(student, pyfile, their_files, student_dir, due_month, due_day, \
         answer_grade = 0
         num_outfiles = 0
         file_grade = 0
+        file_name_grade = 0
         
         # if there is a module, run program with the desired input/output values
         num_outputs = 0
@@ -415,8 +423,10 @@ def do_grade(student, pyfile, their_files, student_dir, due_month, due_day, \
             if len(outfiles[i]) > 0:
                 num_outfiles += len(outfiles[i])
                 print(div())
-                f_grade, ans_grade = check_output_files(fdir, outfiles[i])
+                f_grade, ans_grade, fname_grade = \
+                    check_output_files(fdir, outfiles[i])
                 file_grade += f_grade
+                file_name_grade += fname_grade
                 # TODO - file answer support and append to answers grade
                 clean_io_files(fdir, infiles[i], outfiles[i])
             
@@ -437,6 +447,7 @@ def do_grade(student, pyfile, their_files, student_dir, due_month, due_day, \
         # similarly do so for the file grade
         if num_outfiles > 0:
             file_grade /= num_outfiles
+            file_name_grade /= num_outfiles
             files_graded = True
         else:
             files_graded = False
@@ -497,7 +508,7 @@ def do_grade(student, pyfile, their_files, student_dir, due_month, due_day, \
         print(div())
 
         # go through each flag and take off points for it
-        if has_error:
+        if has_error: # error
             if MANUALLY_STOPPED:
                 descript = "Program stucked (manually stopped)"
             else:
@@ -505,34 +516,39 @@ def do_grade(student, pyfile, their_files, student_dir, due_month, due_day, \
             issues.append(descript + ": -" + str(HAS_ERROR))
             comments.append(descript + " [-" + str(HAS_ERROR) + "].")
             subtractions.append(HAS_ERROR)
-        if answers_graded and answer_grade < 1:
+        if answers_graded and answer_grade < 1: # answers
             answer_sub = round(WRONG_ANSWER * (1 - answer_grade))
             issues.append("Wrong answer(s): -" + str(answer_sub))
             comments.append("Wrong answer(s) [-" + str(answer_sub) + "]")
             subtractions.append(answer_sub)
-        if files_graded and file_grade < 1:
+        if files_graded and file_grade < 1: # output results
             answer_sub = round(BAD_FILE_OUTPUT * (1 - file_grade))
             issues.append("Wrong file output(s): -" + str(answer_sub))
             comments.append("Wrong file output(s) [-" + str(answer_sub) + "]")
             subtractions.append(answer_sub)
-        if output_grade < 1:
+        if files_graded and file_name_grade < 1: # output file name
+            answer_sub = round(BAD_FILE_NAME * (1 - file_name_grade))
+            issues.append("Wrong output file name(s): -" + str(answer_sub))
+            comments.append("Wrong output file name(s) [-" + str(answer_sub) + "]")
+            subtractions.append(answer_sub)
+        if output_grade < 1: # output formatting
             output_sub = round(BAD_OUTPUT * (1 - output_grade))
             issues.append("Mismatched output: -" + str(output_sub))
             comments.append("Mismatched output [-" + str(output_sub) + "]")
             subtractions.append(output_sub)
-        if not has_main:
+        if not has_main: # main()
             issues.append("Missing main(): -" + str(NO_MAIN))
             comments.append("Missing main() [-" + str(NO_MAIN) + "].")
             subtractions.append(NO_MAIN)
-        if not has_header:
+        if not has_header: # header
             issues.append("Missing header: -" + str(NO_HEADER))
             comments.append("Missing header [-" + str(NO_HEADER) + "].")
             subtractions.append(NO_HEADER)
-        if not has_comments:
+        if not has_comments: # comments
             issues.append("No comments: -" + str(NO_COMMENTS))
             comments.append("No comments [-" + str(NO_COMMENTS) + "].")
             subtractions.append(NO_COMMENTS)
-        if has_header and not has_description:
+        if has_header and not has_description: # bad description
             issues.append("Missing or incomplete description: -" + str(NO_DESCRIPT))
             comments.append("Missing description [-" + str(NO_DESCRIPT) + "].")
             subtractions.append(NO_DESCRIPT)
