@@ -564,17 +564,25 @@ def do_grade(student, pyfile, their_files, student_dir, due_month, due_day, \
     #               (no input) keeps recommended grade
     show_issues(issues)
     print("Add or subtract points using +N or -N (N is the number of points).")
+    print("If you want to grade this manually, type in the letter 'm'.")
     recommended = compute_grade(subtractions, [])
     print(GRN + "Max grade: " + str(recommended))
     grade = input(BLU + "Grade:     " + BLK)
     additions = []
+    manual = False
     while grade != "":
         modifications = grade.split()
-        if(len(modifications) == 1 and modifications[0][0] != "+" \
+        # if modification is just a pure number, set that grade and move on
+        if len(modifications) == 1 and modifications[0][0] != "+" \
                                    and modifications[0][0] != "-" \
                                    and modifications[0][0] != "x" \
-                                   and modifications[0].isdigit()):
+                                   and modifications[0].isdigit():
             recommended = int(modifications[0])
+            break
+        # if modification is "m", that means grade manually - and move on!
+        if len(modifications) == 1 and modifications[0].lower() == "m":
+            manual = True
+            recommended = 0
             break
         for mod in modifications:
             mod_val = mod[1:]
@@ -597,8 +605,14 @@ def do_grade(student, pyfile, their_files, student_dir, due_month, due_day, \
         grade = input(BLU + "Grade:     " + BLK)
     grade = str(max(0, recommended))
 
+    # Prepend with message if this needs to be regarded manually
+    if manual:
+        print("Manual mode: please regrade this assignment manually later.")
+        cmnts = "MANUAL MODE: REGRADE THIS MANUALLY!!! "
+    else:
+        cmnts = ""
+
     # process standard comments, and get grader append any other notes
-    cmnts = ""
     for c in comments:
         cmnts += c + " "
     
