@@ -202,15 +202,26 @@ def check_output_files(fdir, outfiles, answers = []):
         real_name = '_'.join(outfname.split('_')[3:])
         fpath = fdir + "/" + real_name
         
+        # if file doesn't exist, ask user to manually find it, else grade is 0
+        # TODO - take off points if file has a bad name
         print("Checking file: " + real_name)
-        # if file doesn't exist, grade is 0 for this file
-        if not os.path.isfile(fpath):
+        no_file = False
+        while not os.path.isfile(fpath):
             print(RED + "Expected output file \"" + real_name + \
                         "\" not found." + BLK)
+            student_files = os.listdir(fdir)
+            print("Here are all of their files:", student_files)
+            ans = input("Should I load any of these? > ")
+            if not ans:
+                no_file = True
+                break
+            else:
+                fpath = fdir + "/" + ans
+        if no_file:
             continue
         
         # read the output file and the expected file into lists
-        f_output = open(fdir + "/" + real_name)
+        f_output = open(fpath)
         output = f_output.readlines()
         f_output.close()
         f_expected = open(FILES_DIR + "/" + outfname, "r")
@@ -371,6 +382,7 @@ def do_grade(student, pyfile, their_files, student_dir, due_month, due_day, \
         file_grade = 0
         
         # if there is a module, run program with the desired input/output values
+        num_outputs = 0
         for i in range(len(inputs)):
             print(div())
             print("Testing with input value(s):")
@@ -378,6 +390,7 @@ def do_grade(student, pyfile, their_files, student_dir, due_month, due_day, \
                 print("   " + inputs[i][j])
             matches = 0
             max_matches = len(outputs[i])
+            num_outputs += max_matches
             # try to run the program
             worked, out, err = run_prog(fdir, true_file, inputs[i], infiles[i])
             if not worked:
@@ -408,11 +421,11 @@ def do_grade(student, pyfile, their_files, student_dir, due_month, due_day, \
                 clean_io_files(fdir, infiles[i], outfiles[i])
             
         # compute average grade of output using the sum of all comparisons
-        if len(inputs) > 0:
-            output_grade /= len(inputs)
+        if num_outputs > 0:
+            output_grade /= num_outputs
             output_grade = math.floor(output_grade*10) / 10 # round down
         else:
-            output_grade = 1
+            output_grade = 1.0
         
         # compute average answer grade, and set flag to False if irrelevant
         if len(answers) > 0:
