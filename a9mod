@@ -1,0 +1,9 @@
+A9
+FILE WordSearch.py
+DUE 4 8
+RUN 1
+
+INPUT
+INFILE hidden.txt
+OUTPUT
+OUTFILE found.txt

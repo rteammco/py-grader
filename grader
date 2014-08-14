@@ -103,8 +103,7 @@ def run_prog(fdir, fname, inputs = [], infiles = []):
     cur_dir = os.path.dirname(os.path.abspath(__file__))
     # copy input files (if any) to the current grading directory
     for infname in infiles:
-        real_name = '_'.join(infname.split('_')[3:])
-        copy_file(FILES_DIR + "/" + infname, fdir + "/" + real_name)
+        copy_file("./" + infname, fdir + "/" + infname)
     MANUALLY_STOPPED = False
     DOING_TEST_RUN = True
     try:
@@ -148,8 +147,14 @@ def compare_outputs(out_lines, expected_lines, ignore_spc,
     expected = list(filter(("").__ne__, expected_lines))
     
     # convert lists into a single comparable string
+    out_disp = ''
+    for line in out:
+        out_disp += line + "\n"
     out = ''.join(out)
     expected = ''.join(expected_lines)
+    expected_disp = ''
+    for line in expected_lines:
+        expected_disp += line + "\n"
     
     # if spacing is ignored, remove all spaces:
     if ignore_spc:
@@ -184,7 +189,9 @@ def compare_outputs(out_lines, expected_lines, ignore_spc,
         print(RED + "Mismatched line in " + keyword + ": " + BLK \
                   + str(round(ratio*100, 2)) + "% match")
         print("Expected: '" + expected + "'")
+        print(expected_disp)
         print("     Got: '" + out + "'")
+        print(out_disp)
         if big_diff:
             print(RED + "Big output difference detected: " + BLK \
                       + "(-5% more)")
@@ -207,17 +214,16 @@ def check_output_files(fdir, outfiles, ignore_spc, answers = []):
     answers_grade = 0
     fname_grade = 0
     for outfname in outfiles:
-        real_name = '_'.join(outfname.split('_')[3:])
-        fpath = fdir + "/" + real_name
+        fpath = fdir + "/" + outfname
         
         # if file doesn't exist, ask user to manually find it, else grade is 0
         # TODO - take off points if file has a bad name
-        print("Checking file: " + real_name)
+        print("Checking file: " + outfname)
         no_file = False
         good_fname = True
         while not os.path.isfile(fpath):
             good_fname = False
-            print(RED + "Expected output file \"" + real_name + \
+            print(RED + "Expected output file \"" + outfname + \
                         "\" not found." + BLK)
             student_files = os.listdir(fdir)
             print("Here are all of their files:", student_files)
@@ -236,7 +242,7 @@ def check_output_files(fdir, outfiles, ignore_spc, answers = []):
         f_output = open(fpath)
         output = f_output.readlines()
         f_output.close()
-        f_expected = open(FILES_DIR + "/" + outfname, "r")
+        f_expected = open("./" + outfname, "r")
         expected = f_expected.readlines()
         f_expected.close()
         
@@ -326,7 +332,8 @@ def get_days_late(fpath, due_day, due_month):
 
 def do_grade(student, pyfile, their_files, student_dir, ignore_spc, \
              due_month, due_day, \
-             inputs, infiles, outputs, outfiles, answers, freq_comments):
+             inputs, infiles, outputs, outfiles, answers, freq_comments, \
+             partners):
     """
     Grades the student's submission by trying to match the file to their list
     of files in their directory path. This part also recognizes late submissions
@@ -334,6 +341,7 @@ def do_grade(student, pyfile, their_files, student_dir, ignore_spc, \
     """
     cls()
     print("STUDENT:", student)
+    partner_student = ""
 
     # keep track of recommended grade and issues with the program
     issues = []
@@ -497,12 +505,18 @@ def do_grade(student, pyfile, their_files, student_dir, ignore_spc, \
             # check for main()
             if not at_header and not has_main and "main" in line:
                 has_main = True
-            # check for header
+            # check for header and partner
             if at_header:
                 if len(line) > 0 and line[0] != "#":
                     at_header = False
                 if len(line) > 0 and line[0] == "#":
                     has_header = True
+                # check for partner:
+                if "partner name" in line.lower():
+                    partner_student = line.split()
+                    partner_student = partner_student[3:]
+                    partner_student = ', '.join(partner_student[::-1])
+
             # check for comments
             if not at_header and "#" in line:
                 has_comments = True
@@ -572,6 +586,8 @@ def do_grade(student, pyfile, their_files, student_dir, ignore_spc, \
     #       +N      adds N points
     #       N       overrides the grade to N points
     #               (no input) keeps recommended grade
+    if partners and partner_student:
+        print("Partner found:", partner_student)
     show_issues(issues)
     print("Add or subtract points using +N or -N (N is the number of points).")
     print("If you want to grade this manually, type in the letter 'm'.")
@@ -675,7 +691,9 @@ def do_grade(student, pyfile, their_files, student_dir, ignore_spc, \
 
     # set up the user's grade and confirm (or redo) it if grader wants
     usr_grade = []
-    usr_grade.append(student)
+    usr_grade.append([student])
+    if partners and partner_student:
+        usr_grade[0].append(partner_student)
     usr_grade.append(grade)
     usr_grade.append(cmnts.rstrip())
     print(usr_grade)
@@ -684,7 +702,8 @@ def do_grade(student, pyfile, their_files, student_dir, ignore_spc, \
     if ans.lower() == "r": # redo this grade
         do_grade(student, pyfile, their_files, student_dir, ignore_spc, \
                  due_month, due_day,\
-                 inputs, infiles, outputs, outfiles, answers, freq_comments)
+                 inputs, infiles, outputs, outfiles, answers, freq_comments, \
+                 partners)
     elif ans.lower() == "q": # quit after writing this grade
         quit = True
 
@@ -713,95 +732,91 @@ def make_temp_dir():
 
 
     
-def read_module(module):
+def read_module(mod_fname):
     """
-    Opens the given module file (if possible) and reads it to provide a set of
-    inputs, outputs, answer keys, and file input/outputs.
+    Opens the given module file (if possible) and reads it to provide a set of...
+    TODO comment
     """
+    mod_f = open(mod_fname, "r")
+    lines = mod_f.readlines()
+    mod_f.close()
+
+    # read the grading metadata
+    asgn = lines[0].strip()
+    pyfile = lines[1].split()[1]
+    due = lines[2].split()
+    due_day = int(due[1])
+    due_month = int(due[2])
+    test_runs = int(lines[3].split()[1])
+
+    lines = lines[4:]
     inputs = []
     infiles = []
     outputs = []
     outfiles = []
     answers = []
-    test_runs = 0
-    if module != "":
-        # read file and determine number of I/O test runs
-        make_temp_dir()
-        mod_file = open(module, "r")
-        lines = mod_file.readlines()
-        mod_file.close()
-        test_runs = int(lines[0][4:])
-        i = 0
-        for run in range(test_runs):
-            inputs.append([])
-            infiles.append([])
-            outputs.append([])
-            outfiles.append([])
-            answers.append([])
-            # ignore any whitespace or invalid/comment lines
-            while i < len(lines) and not lines[i].startswith("INPUT"):
-                i += 1
+    i = 0
+    for run in range(test_runs):
+        inputs.append([])
+        infiles.append([])
+        outputs.append([])
+        outfiles.append([])
+        answers.append([])
+
+        # ignore any whitespace or invalid/comment lines
+        while i < len(lines) and not lines[i].startswith("INPUT"):
             i += 1
-            # append each INPUT to the inputs list for this run
-            while i < len(lines) and lines[i].startswith(">>>") :
-                inputs[run].append(lines[i].strip()[4:])
-                i += 1
-            # get the INFILES for this run, if any
-            while i < len(lines) and lines[i].startswith("INFILE"):
-                fname = lines[i].split(' ')[1].strip()
-                fname = INFILE_PRE + str(run) + "_" + fname
-                infiles[run].append(fname)
-                fname = FILES_DIR + "/" + fname
-                infile = open(fname, "w")
-                i += 1
-                while i < len(lines) and lines[i].startswith(">>>"):
-                    fline = lines[i].strip()[4:]
-                    infile.write(fline + "\n")
-                    i += 1
-                infile.close()
-            # get the expected ANSWERS for this run
-            if i < len(lines):
-                ans = lines[i].split(' ')
-                for j in range(1, len(ans)):
-                    answers[run].append(ans[j].strip())
+        i += 1
+        # append each INPUT to the inputs list for this run
+        while i < len(lines) and lines[i].startswith(">>>") :
+            inputs[run].append(lines[i].strip()[4:])
             i += 1
-            # get the list of full desired OUTPUTS for this run
-            while i < len(lines) and lines[i].startswith(">>>"):
-                outputs[run].append(lines[i].strip()[4:])
-                i += 1
-            # get the OUTFILES for this run, if any
-            while i < len(lines) and lines[i].startswith("OUTFILE"):
-                fname = lines[i].split(' ')[1].strip()
-                fname = OUTFILE_PRE + str(run) + "_" + fname
-                outfiles[run].append(fname)
-                fname = FILES_DIR + "/" + fname
-                outfile = open(fname, "w")
-                i += 1
-                while i < len(lines) and lines[i].startswith(">>>"):
-                    fline = lines[i].strip()[4:]
-                    outfile.write(fline + "\n")
-                    i += 1
-                outfile.close()
-    return inputs, infiles, outputs, outfiles, answers
+        # get the INFILES for this run, if any
+        while i < len(lines) and lines[i].startswith("INFILE"):
+            fname = lines[i].split(' ')[1].strip()
+            infiles[run].append(fname)
+            i += 1
+        # get the expected ANSWERS for this run
+        if i < len(lines):
+            ans = lines[i].split(' ')
+            for j in range(1, len(ans)):
+                answers[run].append(ans[j].strip())
+        i += 1
+        # get the list of full desired OUTPUTS for this run
+        while i < len(lines) and lines[i].startswith(">>>"):
+            outputs[run].append(lines[i].strip()[4:])
+            i += 1
+        # get the OUTFILES for this run, if any
+        while i < len(lines) and lines[i].startswith("OUTFILE"):
+            fname = lines[i].split(' ')[1].strip()
+            outfiles[run].append(fname)
+            i += 1
+
+    return asgn, pyfile, due_day, due_month, \
+           inputs, infiles, outputs, outfiles, answers
 
 
 
-def main(assignment, pyfile, due_month, due_day, module, start, ignore_spc):
+def main(module, start, ignore_spc, disp_files, partners):
     """
     Go through each student's submission and grade it, then write the grades to
     a file.
     """
+    # read the module and get run info
+    if not module:
+        print("Error: module not provided.")
+        return
+    assignment, pyfile, due_day, due_month, inputs, infiles, \
+                outputs, outfiles, answers = read_module(module)
+    print("Molue inputs:", assignment, pyfile, due_day, due_month, \
+                           inputs, infiles, outputs, outfiles, answers)
+
     # set up date, file path, and first person to start grading
-    due_month = int(due_month)
-    due_day = int(due_day)
     fpath = assignment
     first = True
     go = True
     if start != "":
         go = False
-    
-    # if a grading module was provided, set it up here:
-    inputs, infiles, outputs, outfiles, answers = read_module(module)
 
     # if the file is non-existent/empty or if user wants to start fresh,
     # we need to write the header of the CSV file again
@@ -820,6 +835,7 @@ def main(assignment, pyfile, due_month, due_day, module, start, ignore_spc):
     # get a sorted list of students and iterate through them
     students = os.listdir(fpath)
     students.sort()
+    done = []
     freq_comments = []
     num_graded = 0
     total_grade = 0
@@ -830,25 +846,36 @@ def main(assignment, pyfile, due_month, due_day, module, start, ignore_spc):
                 go = True
             else:
                 continue
+
+        # skip students that have already been graded
+        if student in done:
+            print("Already have a grade for:", student)
+            continue
+
         # get the student's submissions and grade the file
         files = os.listdir(fpath + "/" + student)
         usr_grade, quit = do_grade(student, pyfile, files, fpath, ignore_spc, \
                                    due_month, due_day, inputs, infiles, \
-                                   outputs, outfiles, answers, freq_comments)
+                                   outputs, outfiles, answers, freq_comments, \
+                                   partners)
         num_graded += 1
+        done.append(student)
+        print("USR_GRADE:",usr_grade)
         total_grade += int(usr_grade[1])
         
         # write the data to the output file
-        student_names = usr_grade[0].split(",")
-        if len(student_names) == 2:
-            last_name, first_name = student_names
-        else:
-            last_name = first_name = usr_grade[0]
-        grade_file = open(out_file, "a")
-        grade_file.write("\"" + last_name + "\",\"" + first_name + "\",\"" +\
-                         usr_grade[1] + "\",\"" +\
-                         usr_grade[2].replace("\"", "\"\"") + "\"\n")
-        grade_file.close()
+        for i in range(len(usr_grade[0])):
+            student_names = usr_grade[0][i].split(",")
+            if len(student_names) == 2:
+                last_name, first_name = student_names
+            else:
+                last_name = first_name = str(usr_grade[0])
+            grade_file = open(out_file, "a")
+            grade_file.write("\"" + last_name + "\",\"" + first_name + "\",\"" +\
+                             usr_grade[1] + "\",\"" +\
+                             usr_grade[2].replace("\"", "\"\"") + "\"\n")
+            grade_file.close()
+
         if quit:
             break
     print("Session stats:")
@@ -878,17 +905,21 @@ if __name__ == '__main__':
     # set up graceful exit if ctrl-c is pressed
     signal.signal(signal.SIGINT, exit_nicely)
     # process arguments
-    if len(sys.argv) < 5:
-        print("USAGE: ./grader <assignment> <.py file> <due month> <due day> [--options--]")
+    if len(sys.argv) < 2:
+        print("USAGE: ./grader <modfile> [--options--]")
         print("Options:")
-        print("  -m module  provide a grading module for input/output option checking")
         print("  -s start   provide the first few letters of a last name to start at")
+        print("  -i         disregard spacing in output when doing grading")
+        print("  -f         display file contents in full when checking")
+        print("  -p         check for students' partners when grading")
     else:
         # check for options
-        module = ""
+        module = sys.argv[1]
         start = ""
         ignore_spacing = False
-        remaining_args = sys.argv[5:]
+        disp_files = False
+        partners = False
+        remaining_args = sys.argv[2:]
         for i in range(len(remaining_args)):
             if remaining_args[i] == "-m" and len(remaining_args) > i+1:
                 module = remaining_args[i+1]
@@ -896,5 +927,8 @@ if __name__ == '__main__':
                 start = remaining_args[i+1]
             elif remaining_args[i] == "-i":
                 ignore_spacing = True
-        main(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4],
-            module, start, ignore_spacing)
+            elif remaining_args[i] == "-f":
+                disp_files = True
+            elif remaining_args[i] == "-p":
+                partners = True
+        main(module, start, ignore_spacing, disp_files, partners)
