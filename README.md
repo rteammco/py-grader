@@ -144,3 +144,9 @@ Done. Type 'r' to redo this grade, or 'q' to quit.
 </pre>
 
 You can hit ENTER to confirm this grade and comments. Enter "q" instead to quit (the grade will still be saved). Enter "r" to redo this grade if you messed up (the grade won't be saved until you regrade it).
+
+Once you finish grading or quit, all of the grades will be saved in a .csv spreadsheet. If you continue grading later, any new grades will be appeneded. The spreadsheet has the following columns:
+
+"Last Name", "First Name", *grade*, "Feedback (comments)".
+
+This file can then be viewed in programs such as Microsoft Excel or OpenOffice.
